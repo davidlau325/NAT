@@ -1,8 +1,3 @@
-/**
-  The purpose of this program is to print the details of the captured
-  IP packets.
- **/
-//ssh -p 13015 csci4430@projgw.cse.cuhk.edu.hk
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -40,12 +35,6 @@ unsigned int pkt_count = 0;		// Count the number of queued packets
 void byebye(char *msg);
 
 void sig_handler(int sig);
-
-void print_tcp(struct iphdr *ip, struct tcphdr *tcp);
-
-void print_udp(struct iphdr *ip, struct udphdr *udp);
-
-void print_icmp(struct iphdr *ip, struct icmphdr *icmp);
 
 void do_your_job(unsigned char *ip_pkt);
 
@@ -88,200 +77,10 @@ void byebye(char *msg) {
 	}
 }
 
-/**
-	Function: sig_handler
-
-	Argument #1:
-		the numerical representation of the incoming signal.
-
-	Description:
-		To termination the program through the "byebye" function.
- **/
-
 void sig_handler(int sig) {
 	if(sig == SIGINT)
 		byebye(NULL);
 }
-
-/**
-	Function: print_tcp
-
-	Argument #1: struct iphdr *ip
-		The pointer that points to the start of the IP header.
-
-	Argument #2: struct tcphdr *tcp
-		The pointer that points to the start of the TCP header.
-
-	Description:
-		A **helper function** of the do_your_job() function.
-		It is for printing the content of the TCP header.
- **/
-
-void print_tcp(struct iphdr *ip, struct tcphdr *tcp)
-{
-	struct in_addr sip, dip;
-	char sip_str[INET_ADDRSTRLEN+1], dip_str[INET_ADDRSTRLEN+1];
-
-	sip.s_addr = ip->saddr;
-	dip.s_addr = ip->daddr;
-
-	if(!inet_ntop(AF_INET, &sip, sip_str, INET_ADDRSTRLEN))
-	{
-		printf("Impossible: error in source IP\n");
-		byebye(NULL);
-	}
-
-	if(!inet_ntop(AF_INET, &dip, dip_str, INET_ADDRSTRLEN))
-	{
-		printf("Impossible: error in destination IP\n");
-		byebye(NULL);
-	}
-
-  /**** IP ADDRESSES and PORT NUMBER *****/
-
-	printf("TCP;\tSource: %s (%d)\tDestination: %s (%d)\n", 
-		sip_str, ntohs(tcp->source),
-		dip_str, ntohs(tcp->dest) );
-
-  /**** TCP Flags *****/
-
-	printf("\tTCP flags: ");
-	fflush(stdout);
-
-	if(tcp->urg)
-		putchar('U');
-	else
-		putchar('_');
-
-	if(tcp->ack)
-		putchar('A');
-	else
-		putchar('_');
-
-	if(tcp->psh)
-		putchar('P');
-	else
-		putchar('_');
-
-	if(tcp->rst)
-		putchar('R');
-	else
-		putchar('_');
-
-	if(tcp->syn)
-		putchar('S');
-	else
-		putchar('_');
-
-	if(tcp->fin)
-		putchar('F');
-	else
-		putchar('_');
-
-  /**** SEQ and ACK Number *****/
-
-	printf("\tSEQ: %lu\tACK: %lu\n",
-		(unsigned long) ntohl(tcp->seq),
-		(unsigned long) ntohl(tcp->ack_seq));
-	fflush(stdout);
-
-}  // end print_tcp()
-
-
-
-
-/****
-	Function: print_udp
-
-	Argument #1: struct iphdr *ip
-		The pointer that points to the start of the IP header.
-
-	Argument #2: struct tcphdr *udp
-		The pointer that points to the start of the UDP header.
-
-	Description:
-		A **helper function** of the do_your_job() function.
-		It is for printing the content of the UDP header.
- */
-
-void print_udp(struct iphdr *ip, struct udphdr *udp)
-{
-	struct in_addr sip, dip;
-	char sip_str[INET_ADDRSTRLEN+1], dip_str[INET_ADDRSTRLEN+1];
-
-	sip.s_addr = ip->saddr;
-	dip.s_addr = ip->daddr;
-
-	if(!inet_ntop(AF_INET, &sip, sip_str, INET_ADDRSTRLEN))
-	{
-		printf("Impossible: error in source IP\n");
-		byebye(NULL);
-	}
-
-	if(!inet_ntop(AF_INET, &dip, dip_str, INET_ADDRSTRLEN))
-	{
-		printf("Impossible: error in destination IP\n");
-		byebye(NULL);
-	}
-
-  /**** IP ADDRESSES and PORT NUMBER *****/
-
-	printf("UDP\tSource: %s (%d)\tDestination: %s (%d)\n", 
-		sip_str,	ntohs(udp->source),
-		dip_str, ntohs(udp->dest) );
-
-  /**** LENGTH ****/
-
-	printf("\tLength: %d\n", ntohs(udp->len));
-
-}  // end print_udp()
-
-
-
-
-/****
-	Function: print_icmp
-
-	Argument #1: struct iphdr *ip
-		The pointer that points to the start of the IP header.
-
-	Argument #2: struct tcphdr *icmp
-		The pointer that points to the start of the ICMP header.
-
-	Description:
-		A **helper function** of the do_your_job() function.
-		It is for printing the content of the ICMP header.
- */
-
-void print_icmp(struct iphdr *ip, struct icmphdr *icmp)
-{
-	struct in_addr sip, dip;
-	char sip_str[INET_ADDRSTRLEN+1], dip_str[INET_ADDRSTRLEN+1];
-
-	sip.s_addr = ip->saddr;
-	dip.s_addr = ip->daddr;
-
-	if(!inet_ntop(AF_INET, &sip, sip_str, INET_ADDRSTRLEN))
-	{
-		printf("Impossible: error in source IP\n");
-		byebye(NULL);
-	}
-
-	if(!inet_ntop(AF_INET, &dip, dip_str, INET_ADDRSTRLEN))
-	{
-		printf("Impossible: error in destination IP\n");
-		byebye(NULL);
-	}
-
-  /**** IP ADDRESSES and PORT NUMBER *****/
-
-	printf("ICMP\tSource: %s\tDestination: %s\n", 
-		sip_str, dip_str);
-
-} // end print_icmp
-
-
-
 
 /****
 	Function: do_your_job
@@ -307,18 +106,15 @@ void do_your_job(unsigned char *ip_pkt)
 	switch(ip->protocol)
 	{
 	  case IPPROTO_TCP:
-		print_tcp(ip, (struct tcphdr *)
-				(((unsigned char *) ip) + ip->ihl * 4));
+		 // handling TCP here!
 		break;
 
 	  case IPPROTO_UDP:
-		print_udp(ip, (struct udphdr *)
-				(((unsigned char *) ip) + ip->ihl * 4));
+		// handling UDP here!
 		break;
 
 	  case IPPROTO_ICMP:
-		print_icmp(ip, (struct icmphdr *)
-				(((unsigned char *) ip) + ip->ihl * 4));
+		// reserve for ICMP error handling
 		break;
 
 	  default:
@@ -327,14 +123,6 @@ void do_your_job(unsigned char *ip_pkt)
 
 } // end do_your_job()
 
-
-
-
-/************************************************************************\
-
-                           Main Function
-
-\************************************************************************/
 
 int main(int argc, char **argv)
 {
