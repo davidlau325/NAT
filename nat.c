@@ -18,7 +18,8 @@
 #include <arpa/inet.h>		// required by "inet_ntop()"
 
 #define BUF_SIZE	2048
-
+#define DEBUG_MODE_UDP 1
+#define MAX=500;
 
 /************************************************************************\
                            Global Variables
@@ -27,6 +28,146 @@
 struct ipq_handle *ipq_handle = NULL;	// The IPQ handle
 
 unsigned int pkt_count = 0;		// Count the number of queued packets
+
+/*I move them here to make them global variables*/
+
+struct iphdr *ip; 
+
+unsigned char buf[BUF_SIZE];	// buffer to stored queued packets
+
+ipq_packet_msg_t *msg;		// point to the packet info.
+
+unsigned int public_IP;
+
+type LOCAL_MASK;
+
+type LOCAL_NETWORK;
+
+
+
+
+/************************************************************************\
+                           UDP Part
+\************************************************************************/
+
+typedef struct UDP_NAT_TABLE{
+	unsigned int ipAddr;
+	unsigned short port;
+	unsigned short translated_port;
+	double timestamp_last;
+	double timestamp_create;
+	int valid;
+}UDP_NAT_TABLE;
+
+UDP_NAT_TABLE[MAX];
+
+int UDP_NAT_TABLE_count=0;
+
+
+
+
+void UDP_Handling(){
+
+
+if (( ntohl (ip -> saddr ) & LOCAL_MASK )== LOCAL_NETWORK ) {
+// Out-bound traffic
+
+
+
+		/*step1:  search if the incoming packet has a source IP-port pair*/
+
+		struct udphdr * udph = ( struct udphdr *) ((( char *) ip )
+		+ ip ->ihl *4) ;
+
+
+
+		int match=0;
+		int match_index=0;
+		unsigned int ip_temp=0;
+		unsigned short port_temp=0;
+
+		int i;
+		for(i=0;i<UDP_NAT_TABLE_count;i++)
+		{
+			ip_temp=ntohl(ip -> saddr);//can i?
+			port_temp=ntohs(udph -> source);//can i?
+
+			if((ip_temp==UDP_NAT_TABLE[i].ipAddr)&&(port_temp==UDP_NAT_TABLE[i].port))
+				{
+					match=1;
+					match_index=i;
+					break;
+				}
+		}
+
+
+/*step2: If yes, the NAT program should use the previously-assigned translated port number for the outbound packet.*/
+		if(match)
+		{
+
+		port_temp=UDP_NAT_TABLE[match_index].translated_port;
+		port_temp=htons(port_temp);
+		udph -> source=port_temp;
+
+		public_IP=htonl(public_IP);
+		ip -> saddr=public_IP;
+		}
+
+		else
+		{
+
+			UDP_NAT_TABLE_count++;
+
+			ip_temp=ntohl(ip -> saddr);//can i?
+			port_temp=ntohs(udph -> source);//can i?
+
+			UDP_NAT_TABLE[UDP_NAT_TABLE_count-1].ipAddr=ip_temp;
+			UDP_NAT_TABLE[UDP_NAT_TABLE_count-1].port=port_temp;
+
+			if((UDP_NAT_TABLE[UDP_NAT_TABLE_count-2].translated_port+1<=12000)&&(0<=UDP_NAT_TABLE[UDP_NAT_TABLE_count-2].translated_port+1))
+			UDP_NAT_TABLE[UDP_NAT_TABLE_count-1].translated_port=UDP_NAT_TABLE[UDP_NAT_TABLE_count-2].translated_port+1;
+			else
+				printf("port number %d out of range\n", UDP_NAT_TABLE[UDP_NAT_TABLE_count-2].translated_port+1);
+
+
+
+
+
+		}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+}
+else {
+// In-bound traffic
+}
+
+
+
+
+double ts = msg -> timestamp_sec +
+( double )msg -> timestamp_usec /1000000;
+
+
+
+
+}
+
+
 
 /************************************************************************\
                            Function Prototypes
@@ -37,6 +178,9 @@ void byebye(char *msg);
 void sig_handler(int sig);
 
 void do_your_job(unsigned char *ip_pkt);
+
+
+
 
 /************************************************************************\
                            Function Definitions
@@ -96,7 +240,7 @@ void sig_handler(int sig) {
 
 void do_your_job(unsigned char *ip_pkt)
 {
-	struct iphdr *ip;
+
 
 	pkt_count++;
 
@@ -110,7 +254,7 @@ void do_your_job(unsigned char *ip_pkt)
 		break;
 
 	  case IPPROTO_UDP:
-		// handling UDP here!
+		UDP_Handling();
 		break;
 
 	  case IPPROTO_ICMP:
@@ -126,8 +270,7 @@ void do_your_job(unsigned char *ip_pkt)
 
 int main(int argc, char **argv)
 {
-	unsigned char buf[BUF_SIZE];	// buffer to stored queued packets
-	ipq_packet_msg_t *msg;		// point to the packet info.
+	
 
   /**** Create the ipq_handle ****/
 
