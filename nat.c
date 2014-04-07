@@ -2,7 +2,7 @@
   The purpose of this program is to print the details of the captured
   IP packets.
  **/
-//haha
+//ssh -p 13015 csci4430@projgw.cse.cuhk.edu.hk
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
