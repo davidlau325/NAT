@@ -639,6 +639,7 @@ void do_your_job(unsigned char *ip_pkt)
 
 int main(int argc, char **argv)
 {
+	unsigned int tempMask;
 	struct in_addr* container = malloc(sizeof(struct in_addr));
 	if(argc!=4)
 	{
@@ -651,7 +652,9 @@ int main(int argc, char **argv)
 		public_IP = container->s_addr;
                 inet_aton(argv[2],container);
 		LOCAL_NETWORK=container->s_addr;
-		LOCAL_MASK=atoi(argv[3]);
+		LOCAL_MASK = 0xFFFFFFFF;
+		tempMask = atoi(argv[3]);
+		LOCAL_MASK = LOCAL_MASK << (32 - tempMask);
 	}
 	
 	memset(PORTARRY,0,sizeof(char)*2001);
