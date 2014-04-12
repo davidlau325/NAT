@@ -18,25 +18,6 @@
 #include <arpa/inet.h>		// required by "inet_ntop()"
 
 #include <time.h>
-
-
-
-void gettime()
-{
-    time_t rawtime;
-    struct tm * timeinfo;
-
-    time(&rawtime); /* get the current time */
-    timeinfo = localtime(&rawtime);
-    printf("%02d:%02d:%02d ",
-            timeinfo->tm_hour, /* hour */
-            timeinfo->tm_min, /* minute */
-            timeinfo->tm_sec); /* second */
-
-   
-}
-
-
 #include "tcp.h"
 #define BUF_SIZE	2048
 #define DEBUG_MODE_UDP 1
@@ -47,27 +28,19 @@ void gettime()
 \************************************************************************/
 
 struct ipq_handle *ipq_handle = NULL;	// The IPQ handle
-
 unsigned int pkt_count = 0;		// Count the number of queued packets
 
 /*I move them here to make them global variables*/
-
 struct iphdr *ip; 
-
 unsigned char buf[BUF_SIZE];	// buffer to stored queued packets
-
 ipq_packet_msg_t *msg;		// point to the packet info.
-
 struct in_addr * public_IP;
-
 struct in_addr * LOCAL_NETWORK;
-
 unsigned int  LOCAL_MASK;
 
-
 char PORTARRY[2001];
-
 int decision;
+extern TCP_Table currentTable[MAX];
 
 
 
@@ -450,18 +423,6 @@ void sig_handler(int sig) {
 		byebye(NULL);
 }
 
-/****
-	Function: do_your_job
-
-	Argument #1: unsigned char *ipq_pkt;
-		The pointer that points to the start of the IPQ packet 
-		structure;
-
-	Description:
-		In this example, we print all the details about the 
-		queued packet.
- */
-
 void do_your_job(unsigned char *ip_pkt)
 {
 
@@ -474,9 +435,7 @@ void do_your_job(unsigned char *ip_pkt)
 	switch(ip->protocol)
 	{
 	  case IPPROTO_TCP:
-		 // handling TCP here!
-	  	  handle_tcp(ip, (struct tcphdr *) (((unsigned char *) ip) + ip->ihl * 4));
-
+	  	decision=handle_tcp(ip, (struct tcphdr *) (((unsigned char *) ip) + ip->ihl * 4));
 		break;
 
 	  case IPPROTO_UDP:
@@ -515,19 +474,11 @@ int main(int argc, char **argv)
 
 // initialize UDP_NAT_TABLE_count
 		int i;
-		for(i=0;i<UDP_NAT_TABLE_count;i++)
+		for(i=0;i<MAX;i++)
 		{
-			UDP_NAT_TABLE[i].valid=0;
+			currentTable[i].valid = 0;
+			UDP_NAT_TABLE[i].valid = 0;
 		}
-
-
-
-
-
-
-
-
-
 
   /**** Create the ipq_handle ****/
 
@@ -572,13 +523,23 @@ int main(int argc, char **argv)
 		
 		check_udp_entry_time_out();
 
-
-
 		do_your_job(msg->payload);
 
-		if(ipq_set_verdict(ipq_handle, msg->packet_id, NF_ACCEPT, 0, NULL) == -1)
-		{
+		if(decision == -1){
+			if(ipq_set_verdict(ipq_handle, msg->packet_id, NF_DROP, 0, NULL) == -1)
+			{
 			byebye("ipq_set_verdict");	// exit(1) included.
+			}
+		}else if(decision == 1){
+			if(ipq_set_verdict(ipq_handle, msg->packet_id, NF_ACCEPT, msg->data_len, msg) == -1)
+			{
+			byebye("ipq_set_verdict");	// exit(1) included.
+			}
+		}else{
+			if(ipq_set_verdict(ipq_handle, msg->packet_id, NF_ACCEPT, 0, NULL) == -1)
+			{
+			byebye("ipq_set_verdict");	// exit(1) included.
+			}
 		}
 
 	} while(1);
