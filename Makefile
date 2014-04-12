@@ -1,14 +1,7 @@
 CC=gcc
-CFLAGS= -Wall -O3
-LDFLAGS= -lipq -lm
-DEPS=checksum.h tcp.h
-OBJ=nat.o checksum.o tcp.o
+CFLAGS= -lipq
 
-%.o:%.c $(DEPS)
-	$(CC) $(CFLAGS) -c -o $@ $< $(LDFLAGS)
-
-run:$(OBJ)
-	$(CC) $(CFLAGS) -o nat $^ $(LDFLAGS)
+run:$(CC) -Wall *.c -o nat $(CFLAGS)
 
 .PHONY:clean
 clean:

@@ -17,18 +17,19 @@
 #include <sys/socket.h>		// required by "inet_ntop()"
 #include <arpa/inet.h>		// required by "inet_ntop()"
 
-#include <time.h>
 #include "checksum.h"
 #include "tcp.h"
 
 #define BUF_SIZE 2048
 #define DEBUG_MODE_UDP 1
-#define MAX 2001;
+#define MAX 2001
+#define tableMAX = 2000
+#define debugMode = 1
 
 /************************************************************************\
                            Global Variables
 \************************************************************************/
-extern TCP_Table currentTable[MAX];
+// extern TCP_Table currentTable[MAX];
 
 typedef struct UDP_NAT_TABLE_TYPE{
 	unsigned int ipAddr; //vm b or c
@@ -37,6 +38,14 @@ typedef struct UDP_NAT_TABLE_TYPE{
 	double timestamp;
 	char valid;
 }UDP_NAT_TABLE_TYPE;
+
+typedef struct TCP_Table{
+	unsigned int originalIP;
+	unsigned short originalPort;
+	unsigned short newPort;
+	int exitFlow;
+	int valid;
+}TCP_Table;
 
 struct ipq_handle *ipq_handle = NULL;	// The IPQ handle
 unsigned int pkt_count = 0;		// Count the number of queued packets
@@ -52,7 +61,220 @@ unsigned int  LOCAL_MASK;
 char PORTARRY[2001];
 int decision;
 UDP_NAT_TABLE_TYPE UDP_NAT_TABLE[MAX];
+TCP_Table currentTable[tableMAX];
 
+/************************************************************************\
+                           TCP Part
+\************************************************************************/
+
+void checkTermination(int foundEntry){
+
+	if(tcph->fin == 1 && tcph->ack != 1){
+		if(currentTable[foundEntry].exitFlow == -1){
+			currentTable[foundEntry].exitFlow = 1;
+			if(debugMode){
+				printf("FIN sent to initiate closing..\n");
+			}
+		}else if (currentTable[foundEntry].exitFlow == 2){
+			currentTable[foundEntry].exitFlow = 3;
+			if(debugMode){
+				printf("FIN sent to respond to closing..\n");
+			}
+		}
+	}
+
+	if(tcph->fin == 1 && tcph->ack == 1){
+		if(currentTable[foundEntry].exitFlow == 1){
+			currentTable[foundEntry].exitFlow = 3;
+			if(debugMode){
+				printf("FIN & ACK sent together to respond to closing..\n");
+			}
+		}
+	}
+
+	if(tcph->ack == 1 && tcph->fin != 1){
+		if(currentTable[foundEntry].exitFlow == 1){
+			currentTable[foundEntry].exitFlow = 2;
+			if (debugMode){
+				printf("ACK sent to respond to closing..\n");
+			}
+		}else if(currentTable[foundEntry].exitFlow == 3){
+			currentTable[foundEntry].valid = 0;
+			if(debugMode){
+				printf("The final ACK received and thus terminate this TCP flow!\n");
+			}
+		}
+	}
+}
+
+int handle_tcp(){
+	unsigned char *ip_pkt = msg->payload;
+	struct iphdr *ip;
+	int i;
+	int foundEntry;
+	int insertEntry;
+	int newPort = -1;
+
+	ip = (struct iphdr *) ip_pkt;
+	struct tcphdr *tcph = (struct tcphdr *) (((unsigned char *) ip) + ip->ihl * 4);
+
+	struct in_addr sip, dip;
+	char sip_str[INET_ADDRSTRLEN+1], dip_str[INET_ADDRSTRLEN+1];
+
+	sip.s_addr = ip->saddr;
+	dip.s_addr = ip->daddr;
+
+	if(!inet_ntop(AF_INET, &sip, sip_str, INET_ADDRSTRLEN))
+	{
+		printf("Impossible: error in source IP\n");
+		return -1;
+	}
+
+	if(!inet_ntop(AF_INET, &dip, dip_str, INET_ADDRSTRLEN))
+	{
+		printf("Impossible: error in destination IP\n");
+		return -1;
+	}
+
+	if(ntohl(ip->daddr) == public_IP){
+			printf("Packet sent to VM A! No modified and just forward it!\n");
+			return 2;
+	}
+
+	if((ntohl(ip->saddr) & LOCAL_MASK)==LOCAL_NETWORK){
+		// out-bound packet
+
+		foundEntry = -1;
+
+		for(int i=0;i<tableMAX;i++){
+			if(currentTable[i].valid == 1){
+				if((currentTable[i].originalIP == (ntohl(ip->saddr))) && (currentTable[i].originalPort == (ntohs(tcph->source)))){
+					foundEntry = i;
+					break;
+				}
+			}
+		}
+
+		if(foundEntry == -1){
+			if(tcph->syn == 1){
+				if(debugMode == 1){
+					printf("Received a SYN packet && Not found in Table Entry\n");
+				}
+
+				newPort = -1;
+				for(i=0;i<2001;i++){
+					if(PORTARRAY[i] == 0){
+						newPort = (i+10000);
+					}
+				}
+
+				if(newPort == -1){
+					printf("No new Port available!\n");
+					return -1;
+				}else{
+					insertEntry = -1;
+					for(i=0;i<tabeMAX;i++){
+						if(currentTable[i].valid == 1){
+							insertEntry = i;
+						}
+					}
+
+					if(insertEntry == -1){
+						printf("Warning! There is no empty entry to be inserted!!\n");
+						return -1;
+					}else{
+						currentTable[insertEntry] = malloc(sizeof(TCP_Table));
+						currentTable[insertEntry].originalIP = ntohl(ip->saddr);
+						currentTable[insertEntry].originalPort = ntohs(tcph->source);
+						currentTable[insertEntry].newPort = newPort;
+						currentTable[insertEntry].exitFlow = -1;
+						currentTable[insertEntry].valid = 1;
+
+						if(debugMode){
+							printf("Created new Entry table! NewPort: %d\n",newPort);
+						}
+						ip->saddr = htonl(public_IP);
+						tcph->source = htons(currentTable[insertEntry].newPort);
+
+						ip->check = htons(ip_checksum(msg->payload));
+						tcph->check = htons(tcp_checksum(msg->payload));
+
+						return 1;
+					}
+				}
+			}else{
+				if(debugMode){
+					printf("Received Not a SYN packet && Not found in Table Entry\n");
+					printf("Drop the packer!\n");
+				}
+				return -1;
+			}
+		}else{
+			if(tcph->syn == 1){
+				if(debugMode){
+					printf("Warning!! Received a SYN packet && found in Table Entry, impossible! Dropped!\n");
+				}
+				return -1;
+			}else{
+				if(debugMode){
+					printf("Received Not a SYN packet && found in Table Entry\n");
+				}
+				ip->saddr = htonl(public_IP);
+				tcph->source = htons(currentTable[foundEntry].newPort);
+
+				ip->check = htons(ip_checksum(msg->payload));
+				tcph->check = htons(tcp_checksum(msg->payload));
+
+				if(debugMode){
+					printf("TCP IP address and Port Modified as retrieved from table= Port: %d",ntohs(tcph->source));
+				}
+
+				checkTermination(foundEntry);
+				
+				return 1;
+			}
+		}
+	}else{
+		// in-bound packet
+
+		foundEntry = -1;
+		for(i=0;i<tableMAX;i++){
+			if(currentTable[i].valid == 1){
+				if(currentTable[i].newPort == (ntohs(tcph->dest))){
+					foundEntry = i;
+					break;
+				}
+			}
+		}
+
+		if(foundEntry == -1){
+			if(debugMode == 1){
+					printf("Dropped TCP in-bound packet because no entry found!\n");
+			}
+			return -1;
+		}else{
+			ip->daddr = htonl(currentTable[foundEntry].originalIP);
+			tcph->dest = htons(currentTable[foundEntry].originalPort);
+			ip->check = htons(ip_checksum(msg->payload));
+			tcph->check = htons(tcp_checksum(msg->payload));
+
+			if(debugMode){
+					printf("Entry found! Modified in-bound packet!\n");
+			}
+
+			checkTermination(foundEntry);
+
+			if(tcph->rst == 1){
+				if(debgMode){
+					printf("The in-bound packet is a RST packet, translated done but dropped the entry\n");
+				}
+				currentTable[foundEntry].valid = 0;
+			}
+
+			return 1;
+		}
+	}
+}
 
 
 /************************************************************************\
@@ -89,7 +311,7 @@ void check_udp_entry_time_out()
 							if(time_difference>30)
 							{
 								UDP_NAT_TABLE[i].valid=0;
-								PORTARRY[i];
+								PORTARRY[i]=0;
 							}
 							break;
 						}
@@ -118,7 +340,7 @@ void check_udp_entry_time_out()
 							if(time_difference>30)
 							{
 								UDP_NAT_TABLE[i].valid=0;
-								PORTARRY[i];
+								PORTARRY[i]=0;
 							}
 							break;
 						}
@@ -299,15 +521,8 @@ if (( ntohl (ip -> saddr ) & LOCAL_MASK )== LOCAL_NETWORK ) {
 
 
 		}//end if not
-}//end Out-bound traffic
-
-
-else {
+	}else {
 // In-bound traffic
-
-
-
-
 
 	int match=0;
 		int match_index=0;
@@ -369,41 +584,6 @@ return change;
 
 }
 
-
-
-/************************************************************************\
-                           Function Prototypes
-\************************************************************************/
-
-void byebye(char *msg);
-
-void sig_handler(int sig);
-
-void do_your_job(unsigned char *ip_pkt);
-
-
-
-
-/************************************************************************\
-                           Function Definitions
-\************************************************************************/
-
-/**
-	Function: byebye
-
-	Argument #1: char *msg
-		The message that will be displayed as a part of the
-		error message.
-
-		if msg == NULL, then there will be no error message
-		printed.
-
-	Description:
-		1) destroy the IPQ handle;
-		2) Flush the iptables to free all the queued packets;
-		3) print the error message (if any).
- **/
-
 void byebye(char *msg) {
 	if(ipq_handle)
 		ipq_destroy_handle(ipq_handle);
@@ -430,8 +610,6 @@ void sig_handler(int sig) {
 
 void do_your_job(unsigned char *ip_pkt)
 {
-
-
 	pkt_count++;
 
 	printf("[%5d] ", pkt_count);
@@ -440,26 +618,27 @@ void do_your_job(unsigned char *ip_pkt)
 	switch(ip->protocol)
 	{
 	  case IPPROTO_TCP:
-	  	decision=handle_tcp();
+	  	printf("Hello World\n");
 		break;
 
 	  case IPPROTO_UDP:
 		decision=UDP_Handling();
 		break;
 
-	  case :
-		// reserve for ICMP error handling
+	  case IPPROTO_ICMP:
+		printf("This is ICMP packet\n");
 		break;
 
 	  default:
 		printf("Unsupported protocol\n");
 	}
 
-} // end do_your_job()
+} 
 
 
 int main(int argc, char **argv)
 {
+	struct in_addr* container = malloc(sizeof(struct in_addr));
 	if(argc!=4)
 	{
 		printf("Usage: ./nat [public IP] [internal IP] [netmask] \n");
@@ -467,9 +646,11 @@ int main(int argc, char **argv)
 	}
 	else
 	{
-		public_IP=inet_aton(argv[1]);
-		LOCAL_NETWORK=inet_aton(argv[2]);
-		LOCAL_MASK=argv[3];
+		inet_aton(argv[1],container);
+		public_IP = container->s_addr;
+                inet_aton(argv[2],container);
+		LOCAL_NETWORK=container->s_addr;
+		LOCAL_MASK=atoi(argv[3]);
 	}
 	
 	memset(PORTARRY,0,sizeof(char)*2001);
@@ -479,7 +660,7 @@ int main(int argc, char **argv)
 		int i;
 		for(i=0;i<MAX;i++)
 		{
-			currentTable[i].valid = 0;
+			//currentTable[i].valid = 0;
 			UDP_NAT_TABLE[i].valid = 0;
 		}
 
@@ -503,7 +684,6 @@ int main(int argc, char **argv)
 
 	do
 	{
-
 	  /**** Read the packet from the QUEUE ****/
 
 		if(ipq_read(ipq_handle, buf, BUF_SIZE, 0) == -1)
@@ -534,7 +714,7 @@ int main(int argc, char **argv)
 			byebye("ipq_set_verdict");	// exit(1) included.
 			}
 		}else if(decision == 1){
-			if(ipq_set_verdict(ipq_handle, msg->packet_id, NF_ACCEPT, msg->data_len, msg) == -1)
+			if(ipq_set_verdict(ipq_handle, msg->packet_id, NF_ACCEPT, msg->data_len, msg->payload) == -1)
 			{
 			byebye("ipq_set_verdict");	// exit(1) included.
 			}
