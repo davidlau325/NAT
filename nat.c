@@ -16,6 +16,27 @@
 #include <sys/types.h>		// required by "inet_ntop()"
 #include <sys/socket.h>		// required by "inet_ntop()"
 #include <arpa/inet.h>		// required by "inet_ntop()"
+
+#include <time.h>
+
+
+
+void gettime()
+{
+    time_t rawtime;
+    struct tm * timeinfo;
+
+    time(&rawtime); /* get the current time */
+    timeinfo = localtime(&rawtime);
+    printf("%02d:%02d:%02d ",
+            timeinfo->tm_hour, /* hour */
+            timeinfo->tm_min, /* minute */
+            timeinfo->tm_sec); /* second */
+
+   
+}
+
+
 #include "tcp.h"
 #define BUF_SIZE	2048
 #define DEBUG_MODE_UDP 1
@@ -44,7 +65,7 @@ struct in_addr * LOCAL_NETWORK;
 unsigned int  LOCAL_MASK;
 
 
-char PORTARRY[2000];
+char PORTARRY[2001];
 
 
 
@@ -54,12 +75,12 @@ char PORTARRY[2000];
 \************************************************************************/
 
 typedef struct UDP_NAT_TABLE{
-	unsigned int ipAddr;
-	unsigned short port;
-	unsigned short translated_port;
+	unsigned int ipAddr; //vm b or c
+	unsigned short port; 	//vm b or c
+	unsigned short translated_port; //vm a
 	double timestamp_last;
 	double timestamp_create;
-	int valid;
+	char valid;
 }UDP_NAT_TABLE;
 
 UDP_NAT_TABLE[MAX];
@@ -67,9 +88,84 @@ UDP_NAT_TABLE[MAX];
 int UDP_NAT_TABLE_count=0;
 
 
+void check_udp_entry_time_out() 
+{
+		struct udphdr * udph = ( struct udphdr *) ((( char *) ip )
+		+ ip ->ihl *4) ;
+
+		unsigned int ip_temp=0;
+		unsigned short port_temp=0;
+
+			if (( ntohl (ip -> saddr ) & LOCAL_MASK )== LOCAL_NETWORK ) 
+			{
+				//out
+					ip_temp=ntohl(ip -> saddr);//can i?
+					port_temp=ntohs(udph -> source);//can i?
 
 
-void UDP_Handling(){
+					int i;
+					for(i=0;i<UDP_NAT_TABLE_count;i++)
+					{
+						
+
+						if((ip_temp==UDP_NAT_TABLE[i].ipAddr)&&(port_temp==UDP_NAT_TABLE[i].port)&&(UDP_NAT_TABLE[i].valid==1))
+						{
+						double ts = msg -> timestamp_sec +( double )msg -> timestamp_usec /1000000;
+						double time_difference=100;
+						time_difference=ts-UDP_NAT_TABLE[i];
+
+							if(time_difference>30)
+							{
+								UDP_NAT_TABLE[i].valid=0;
+								PORTARRY[i];
+							}
+							break;
+						}
+					}
+
+
+
+
+
+			}
+
+			else 
+			{
+				// in
+						port_temp=ntohs(udph -> dest);//can i?
+
+					int i;
+					for(i=0;i<UDP_NAT_TABLE_count;i++)
+					{
+						if((port_temp==UDP_NAT_TABLE[i].translated_port)&&(UDP_NAT_TABLE[i].valid==1))
+						{
+						double ts = msg -> timestamp_sec +( double )msg -> timestamp_usec /1000000;
+						double time_difference=100;
+						time_difference=ts-UDP_NAT_TABLE[i];
+
+							if(time_difference>30)
+							{
+								UDP_NAT_TABLE[i].valid=0;
+								PORTARRY[i];
+							}
+							break;
+						}
+					}
+
+
+			}
+			
+	
+
+}
+
+
+int UDP_Handling(){
+
+int change=2;
+
+struct udphdr * udph = ( struct udphdr *) ((( char *) ip )
+		+ ip ->ihl *4) ;
 
 
 if (( ntohl (ip -> saddr ) & LOCAL_MASK )== LOCAL_NETWORK ) {
@@ -77,10 +173,9 @@ if (( ntohl (ip -> saddr ) & LOCAL_MASK )== LOCAL_NETWORK ) {
 
 
 
-		/*step1:  search if the incoming packet has a source IP-port pair*/
+/*step1:  search if the incoming packet has a source IP-port pair*/
 
-		struct udphdr * udph = ( struct udphdr *) ((( char *) ip )
-		+ ip ->ihl *4) ;
+		
 
 
 
@@ -92,10 +187,7 @@ if (( ntohl (ip -> saddr ) & LOCAL_MASK )== LOCAL_NETWORK ) {
 		int i;
 		for(i=0;i<UDP_NAT_TABLE_count;i++)
 		{
-			ip_temp=ntohl(ip -> saddr);//can i?
-			port_temp=ntohs(udph -> source);//can i?
-
-			if((ip_temp==UDP_NAT_TABLE[i].ipAddr)&&(port_temp==UDP_NAT_TABLE[i].port))
+			if((ip_temp==UDP_NAT_TABLE[i].ipAddr)&&(port_temp==UDP_NAT_TABLE[i].port)&&(UDP_NAT_TABLE[i].valid==1))
 				{
 					match=1;
 					match_index=i;
@@ -108,65 +200,195 @@ if (( ntohl (ip -> saddr ) & LOCAL_MASK )== LOCAL_NETWORK ) {
 		if(match)
 		{
 
+			/*step4:update information.*/
+			// now translate and update header
 		port_temp=UDP_NAT_TABLE[match_index].translated_port;
 		port_temp=htons(port_temp);
 		udph -> source=port_temp;
 
 		public_IP=htonl(public_IP);
 		ip -> saddr=public_IP;
-		}
+
+		udph -> check=htons(udp_checksum(msg->payload));
+		ip -> check=htons(ip_checksum(msg->payload));
+
+		//refresh timestamp
+		double ts = msg -> timestamp_sec +( double )msg -> timestamp_usec /1000000;
+
+			UDP_NAT_TABLE[match_index].timestamp_last=ts;//need modify
+			UDP_NAT_TABLE[match_index].timestamp_create=ts;//need modify
+
+
+			change=1;
+			return change;
+		}//end if yes
+
+/*step3: If not, the NAT program should create new entry.*/
 
 		else
 		{
 
+			
+
+			ip_temp=ntohl(ip -> saddr);//can i?  vm b or c 
+			port_temp=ntohs(udph -> source);//can i? vm b or c 
+
+			
+			unsigned short translated_port_temp=0;
+
+			int i;
+			for(i=0;i<2001;i++)
+			{
+				if(PORTARRY[i]==0)
+				{
+					PORTARRY[i]=1;
+					translated_port_temp=10000+i;
+				}
+
+			}
+
+			if(translated_port_temp=0)
+			{
+				printf("No available port!!!\n");
+				return -1;
+
+			}
+
+			if(DEBUG_MODE_UDP)
+				printf("Translated_port_temp is  %u\n", translated_port_temp);
+
+
+
+			if((translated_port_temp<=12000)&&(10000<=translated_port_temp))
+			{
+
+					int i;
+					for(i=0;i<UDP_NAT_TABLE_count;i++)
+					{
+							if(UDP_NAT_TABLE[i].valid==0)
+							{
+								break;
+							}	
+
+					}
+
+
+
+			UDP_NAT_TABLE[i].ipAddr=ip_temp;
+			UDP_NAT_TABLE[i].port=port_temp;
+			UDP_NAT_TABLE[i].translated_port=translated_port_temp;
+			UDP_NAT_TABLE[i].valid=1;
+
+
+			double ts = msg -> timestamp_sec +( double )msg -> timestamp_usec /1000000;
+
+			UDP_NAT_TABLE[i].timestamp_last=ts;//need modify
+			UDP_NAT_TABLE[i].timestamp_create=ts;//need modify
+
+			
+			/*step4:update information.*/
+
+			// now translate and update header
+			port_temp=UDP_NAT_TABLE[i].translated_port;
+			port_temp=htons(port_temp);
+			udph -> source=port_temp;
+
+			public_IP=htonl(public_IP);
+			ip -> saddr=public_IP;
+
+
+
+			
+			udph -> check=htons(udp_checksum(msg->payload));
+			ip -> check=htons(ip_checksum(msg->payload));
+			// update index
 			UDP_NAT_TABLE_count++;
 
-			ip_temp=ntohl(ip -> saddr);//can i?
-			port_temp=ntohs(udph -> source);//can i?
 
-			UDP_NAT_TABLE[UDP_NAT_TABLE_count-1].ipAddr=ip_temp;
-			UDP_NAT_TABLE[UDP_NAT_TABLE_count-1].port=port_temp;
-
-			if((UDP_NAT_TABLE[UDP_NAT_TABLE_count-2].translated_port+1<=12000)&&(0<=UDP_NAT_TABLE[UDP_NAT_TABLE_count-2].translated_port+1))
-			UDP_NAT_TABLE[UDP_NAT_TABLE_count-1].translated_port=UDP_NAT_TABLE[UDP_NAT_TABLE_count-2].translated_port+1;
+			change=1;
+			return change;
+			}
 			else
-				printf("port number %d out of range\n", UDP_NAT_TABLE[UDP_NAT_TABLE_count-2].translated_port+1);
+			{
+
+			printf("port number %d out of range\n", translated_port_temp);
+			change=-1;
+			return change;
+
+			}
 
 
 
 
 
+		}//end if not
+}//end Out-bound traffic
+
+
+else {
+// In-bound traffic
+
+
+
+
+
+	int match=0;
+		int match_index=0;
+		unsigned int ip_temp=0;
+		unsigned short port_temp=0;
+		port_temp=ntohs(udph -> dest);//can i?
+		int i;
+		for(i=0;i<UDP_NAT_TABLE_count;i++)
+		{
+			if((port_temp==UDP_NAT_TABLE[i].translated_port)&&(UDP_NAT_TABLE[i].valid==1))
+				{
+					match=1;
+					match_index=i;
+					break;
+				}
 		}
 
 
+		if(match)
+		{
+
+			/*step4:update information.*/
+			// now translate and update header
+		port_temp=UDP_NAT_TABLE[match_index].port;
+		port_temp=htons(port_temp);
+		udph -> dest=port_temp;
+
+		ip_temp=UDP_NAT_TABLE[match_index].ipAddr;
+		ip_temp=htonl(ip_temp);
+		ip -> daddr=ip_temp;
+
+		udph -> check=htons(udp_checksum(msg->payload));
+		ip -> check=htons(ip_checksum(msg->payload));
+
+		//refresh timestamp
+		double ts = msg -> timestamp_sec +( double )msg -> timestamp_usec /1000000;
+
+			UDP_NAT_TABLE[match_index].timestamp_last=ts;//need modify
+			UDP_NAT_TABLE[match_index].timestamp_create=ts;//need modify
 
 
-
-
-
-
-
-
-
-
-
-
-
+			change=1;
+			return change;
+		}//end if yes
+		else
+		{
+			change=-1;
+			return change;
+		}
 
 
 }
-else {
-// In-bound traffic
-}
 
 
 
 
-double ts = msg -> timestamp_sec +
-( double )msg -> timestamp_usec /1000000;
 
-
-
+return change;
 
 }
 
@@ -262,7 +484,7 @@ void do_your_job(unsigned char *ip_pkt)
 		UDP_Handling();
 		break;
 
-	  case IPPROTO_ICMP:
+	  case :
 		// reserve for ICMP error handling
 		break;
 
@@ -292,6 +514,21 @@ int main(int argc, char **argv)
 	memset(PORTARRY,0,sizeof(char)*2000);
 
 
+// initialize UDP_NAT_TABLE_count
+		int i;
+		for(i=0;i<UDP_NAT_TABLE_count;i++)
+		{
+			UDP_NAT_TABLE[i].valid=0;
+		}
+
+
+
+
+
+
+
+
+
 
   /**** Create the ipq_handle ****/
 
@@ -313,6 +550,7 @@ int main(int argc, char **argv)
 
 	do
 	{
+
 	  /**** Read the packet from the QUEUE ****/
 
 		if(ipq_read(ipq_handle, buf, BUF_SIZE, 0) == -1)
@@ -332,6 +570,10 @@ int main(int argc, char **argv)
 	  /**** This is the way to read the packet content ****/
 
 		msg = ipq_get_packet(buf);
+		
+		check_udp_entry_time_out();
+
+
 
 		do_your_job(msg->payload);
 
