@@ -554,8 +554,12 @@ if (( ntohl (ip -> saddr ) & LOCAL_MASK )== (LOCAL_NETWORK & LOCAL_MASK)) {
 		}//end if not
 	}else {
 // In-bound traffic
+<<<<<<< HEAD
 		unsigned short port_temp=0;
 		port_temp=ntohs(udph -> dest);//can i
+=======
+		port_temp=ntohs(udph -> dest);//can i?
+>>>>>>> FETCH_HEAD
 
 		if(DEBUG_MODE_UDP) printf("UDP in-bound traffic form port:%d\n",port_temp);	
 
@@ -683,10 +687,17 @@ int main(int argc, char **argv)
 	}
 	else
 	{
+<<<<<<< HEAD
 		inet_aton(argv[1],&container);
 		public_IP = ntohl(container.s_addr);
                 inet_aton(argv[2],&container);
 		LOCAL_NETWORK=ntohl(container.s_addr);
+=======
+		inet_aton(argv[1],container);
+		public_IP = container->s_addr;
+                inet_aton(argv[2],&container);
+		LOCAL_NETWORK=ntohl(container->s_addr);
+>>>>>>> FETCH_HEAD
 		LOCAL_MASK = 0xFFFFFFFF;
 		tempMask = atoi(argv[3]);
 		LOCAL_MASK = LOCAL_MASK << (32 - tempMask);
