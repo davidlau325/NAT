@@ -67,6 +67,7 @@ unsigned int  LOCAL_MASK;
 
 char PORTARRY[2001];
 
+int decision;
 
 
 
@@ -481,7 +482,7 @@ void do_your_job(unsigned char *ip_pkt)
 		break;
 
 	  case IPPROTO_UDP:
-		UDP_Handling();
+		decision=UDP_Handling();
 		break;
 
 	  case :
