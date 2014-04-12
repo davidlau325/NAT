@@ -442,7 +442,7 @@ void do_your_job(unsigned char *ip_pkt)
 	switch(ip->protocol)
 	{
 	  case IPPROTO_TCP:
-	  	decision=handle_tcp(ip, (struct tcphdr *) (((unsigned char *) ip) + ip->ihl * 4));
+	  	decision=handle_tcp();
 		break;
 
 	  case IPPROTO_UDP:
@@ -462,10 +462,8 @@ void do_your_job(unsigned char *ip_pkt)
 
 int main(int argc, char **argv)
 {
-
 	if(argc!=4)
 	{
-
 		printf("Usage: ./nat [public IP] [internal IP] [netmask] \n");
 		exit(0);
 	}
@@ -476,7 +474,7 @@ int main(int argc, char **argv)
 		LOCAL_MASK=argv[3];
 	}
 	
-	memset(PORTARRY,0,sizeof(char)*2000);
+	memset(PORTARRY,0,sizeof(char)*2001);
 
 
 // initialize 
@@ -549,8 +547,7 @@ int main(int argc, char **argv)
 			}
 		}
 
-	} while(1);
+	}while(1);
 
 	return 0;
-
-} // end main()
+}
