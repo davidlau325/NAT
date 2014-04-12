@@ -440,9 +440,7 @@ if (( ntohl (ip -> saddr ) & LOCAL_MASK )== (LOCAL_NETWORK & LOCAL_MASK) ) {
 		port_temp=htons(port_temp);
 		udph -> source=port_temp;
 
-
-		public_IP=htonl(public_IP);
-		ip -> saddr=public_IP;
+		ip -> saddr=htonl(public_IP);
 
 		udph -> check=(udp_checksum(msg->payload));
 		ip -> check=(ip_checksum(msg->payload));
@@ -539,8 +537,8 @@ if (( ntohl (ip -> saddr ) & LOCAL_MASK )== (LOCAL_NETWORK & LOCAL_MASK) ) {
 			port_temp=htons(port_temp);
 			udph -> source=port_temp;
 
-			public_IP=htonl(public_IP);
-			ip -> saddr=public_IP;
+			
+			ip -> saddr=htonl(public_IP);
 
 
 
@@ -666,7 +664,7 @@ void do_your_job(unsigned char *ip_pkt)
 
 	ip = (struct iphdr *) ip_pkt;
 	check_udp_entry_time_out();
-	
+
 	switch(ip->protocol)
 	{
 	  case IPPROTO_TCP:
