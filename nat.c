@@ -17,6 +17,8 @@
 #include <sys/socket.h>		// required by "inet_ntop()"
 #include <arpa/inet.h>		// required by "inet_ntop()"
 
+#include "tcp.h"
+
 #define BUF_SIZE	2048
 #define DEBUG_MODE_UDP 1
 #define MAX=500;
@@ -250,7 +252,7 @@ void do_your_job(unsigned char *ip_pkt)
 	switch(ip->protocol)
 	{
 	  case IPPROTO_TCP:
-		 // handling TCP here!
+		handle_tcp(ip, (struct tcphdr *) (((unsigned char *) ip) + ip->ihl * 4));
 		break;
 
 	  case IPPROTO_UDP:
