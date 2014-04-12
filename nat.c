@@ -79,12 +79,11 @@ typedef struct UDP_NAT_TABLE{
 	unsigned int ipAddr; //vm b or c
 	unsigned short port; 	//vm b or c
 	unsigned short translated_port; //vm a
-	double timestamp_last;
-	double timestamp_create;
+	double timestamp;
 	char valid;
-}UDP_NAT_TABLE;
+}UDP_NAT_TABLE_TYPE;
 
-UDP_NAT_TABLE[MAX];
+UDP_NAT_TABLE_TYPE UDP_NAT_TABLE[MAX];
 
 int UDP_NAT_TABLE_count=0;
 
@@ -113,7 +112,7 @@ void check_udp_entry_time_out()
 						{
 						double ts = msg -> timestamp_sec +( double )msg -> timestamp_usec /1000000;
 						double time_difference=100;
-						time_difference=ts-UDP_NAT_TABLE[i];
+						time_difference=ts-UDP_NAT_TABLE[i].timestamp;
 
 							if(time_difference>30)
 							{
@@ -142,7 +141,7 @@ void check_udp_entry_time_out()
 						{
 						double ts = msg -> timestamp_sec +( double )msg -> timestamp_usec /1000000;
 						double time_difference=100;
-						time_difference=ts-UDP_NAT_TABLE[i];
+						time_difference=ts-UDP_NAT_TABLE[i].timestamp;
 
 							if(time_difference>30)
 							{
@@ -216,8 +215,8 @@ if (( ntohl (ip -> saddr ) & LOCAL_MASK )== LOCAL_NETWORK ) {
 		//refresh timestamp
 		double ts = msg -> timestamp_sec +( double )msg -> timestamp_usec /1000000;
 
-			UDP_NAT_TABLE[match_index].timestamp_last=ts;//need modify
-			UDP_NAT_TABLE[match_index].timestamp_create=ts;//need modify
+			UDP_NAT_TABLE[match_index].timestamp=ts;//need modify
+		
 
 
 			change=1;
@@ -283,8 +282,7 @@ if (( ntohl (ip -> saddr ) & LOCAL_MASK )== LOCAL_NETWORK ) {
 
 			double ts = msg -> timestamp_sec +( double )msg -> timestamp_usec /1000000;
 
-			UDP_NAT_TABLE[i].timestamp_last=ts;//need modify
-			UDP_NAT_TABLE[i].timestamp_create=ts;//need modify
+			UDP_NAT_TABLE[i].timestamp=ts;//need modify
 
 			
 			/*step4:update information.*/
@@ -369,8 +367,8 @@ else {
 		//refresh timestamp
 		double ts = msg -> timestamp_sec +( double )msg -> timestamp_usec /1000000;
 
-			UDP_NAT_TABLE[match_index].timestamp_last=ts;//need modify
-			UDP_NAT_TABLE[match_index].timestamp_create=ts;//need modify
+			UDP_NAT_TABLE[match_index].timestamp=ts;//need modify
+	
 
 
 			change=1;
