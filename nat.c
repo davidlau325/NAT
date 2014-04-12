@@ -296,7 +296,7 @@ void check_udp_entry_time_out()
 		unsigned int ip_temp=0;
 		unsigned short port_temp=0;
 
-			if (( ntohl (ip -> saddr ) & LOCAL_MASK )== LOCAL_NETWORK ) 
+			if (( ntohl (ip -> saddr ) & LOCAL_MASK )== (LOCAL_NETWORK & LOCAL_MASK) ) 
 			{
 
 			if(DEBUG_MODE_UDP)printf("UDP out-bound CHECK \n");	fflush(stdout);
@@ -383,7 +383,7 @@ struct udphdr * udph = ( struct udphdr *) ((( char *) ip )
 		+ ip ->ihl *4) ;
 
 
-if (( ntohl (ip -> saddr ) & LOCAL_MASK )== LOCAL_NETWORK ) {
+if (( ntohl (ip -> saddr ) & LOCAL_MASK )== (LOCAL_NETWORK & LOCAL_MASK) ) {
 // Out-bound traffic
 
 
