@@ -75,7 +75,7 @@ int decision;
                            UDP Part
 \************************************************************************/
 
-typedef struct UDP_NAT_TABLE{
+typedef struct UDP_NAT_TABLE_TYPE{
 	unsigned int ipAddr; //vm b or c
 	unsigned short port; 	//vm b or c
 	unsigned short translated_port; //vm a
