@@ -136,10 +136,7 @@ int handle_tcp(){
 		return -1;
 	}
 
-	if(ntohl(ip->daddr) == public_IP){
-			printf("Packet sent to VM A! No modified and just forward it!\n");
-			return 2;
-	}
+	
 
 	if((ntohl(ip->saddr) & LOCAL_MASK)==(LOCAL_NETWORK & LOCAL_MASK)){
 		// out-bound packet
@@ -316,7 +313,7 @@ void check_udp_entry_time_out()
 					for(i=0;i<MAX;i++)
 					{
 						
-						if(DEBUG_MODE_UDP) printf("UDP out-bound CHECK LOOP\n");	fflush(stdout);
+						// if(DEBUG_MODE_UDP) printf("UDP out-bound CHECK LOOP\n");	fflush(stdout);
 
 						if((ip_temp==UDP_NAT_TABLE[i].ipAddr)&&(port_temp==UDP_NAT_TABLE[i].port)&&(UDP_NAT_TABLE[i].valid==1))
 						{
@@ -351,7 +348,7 @@ void check_udp_entry_time_out()
 					int i;
 					for(i=0;i<MAX;i++)
 					{
-						if(DEBUG_MODE_UDP) printf("UDP IN-bound CHECK LOOP\n");	fflush(stdout);
+						// if(DEBUG_MODE_UDP) printf("UDP IN-bound CHECK LOOP\n");	fflush(stdout);
 
 
 						if((port_temp==UDP_NAT_TABLE[i].translated_port)&&(UDP_NAT_TABLE[i].valid==1))
