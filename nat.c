@@ -18,10 +18,12 @@
 #include <arpa/inet.h>		// required by "inet_ntop()"
 
 #include <time.h>
+#include "checksum.h"
 #include "tcp.h"
-#define BUF_SIZE	2048
+
+#define BUF_SIZE 2048
 #define DEBUG_MODE_UDP 1
-#define MAX=2001;
+#define MAX 2001;
 
 /************************************************************************\
                            Global Variables

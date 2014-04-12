@@ -17,8 +17,8 @@
 #include "checksum.h"
 #include "tcp.h"
 
-#define tableMAX = 500;
-#define debugMode = 1;
+#define tableMAX 500;
+#define debugMode 1;
 
 TCP_Table currentTable[tableMAX];
 
