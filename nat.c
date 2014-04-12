@@ -197,8 +197,8 @@ int handle_tcp(){
 						ip->saddr = htonl(public_IP);
 						tcph->source = htons(currentTable[insertEntry].newPort);
 
-						ip->check = htons(ip_checksum(msg->payload));
-						tcph->check = htons(tcp_checksum(msg->payload));
+						ip->check = (ip_checksum(msg->payload));
+						tcph->check = (tcp_checksum(msg->payload));
 
 						return 1;
 					}
@@ -215,7 +215,14 @@ int handle_tcp(){
 				if(debugMode){
 					printf("Warning!! Received a SYN packet && found in Table Entry, impossible! Dropped!\n");
 				}
-				return -1;
+				ip->saddr = htonl(public_IP);
+				tcph->source = htons(currentTable[foundEntry].newPort);
+
+				ip->check = (ip_checksum(msg->payload));
+				tcph->check = (tcp_checksum(msg->payload));
+
+				checkTermination(foundEntry);
+				return 1;
 			}else{
 				if(debugMode){
 					printf("Received Not a SYN packet && found in Table Entry\n");
@@ -223,8 +230,8 @@ int handle_tcp(){
 				ip->saddr = htonl(public_IP);
 				tcph->source = htons(currentTable[foundEntry].newPort);
 
-				ip->check = htons(ip_checksum(msg->payload));
-				tcph->check = htons(tcp_checksum(msg->payload));
+				ip->check = (ip_checksum(msg->payload));
+				tcph->check = (tcp_checksum(msg->payload));
 
 				if(debugMode){
 					printf("TCP IP address and Port Modified as retrieved from table= Port: %d",ntohs(tcph->source));
@@ -259,8 +266,8 @@ int handle_tcp(){
 		}else{
 			ip->daddr = htonl(currentTable[foundEntry].originalIP);
 			tcph->dest = htons(currentTable[foundEntry].originalPort);
-			ip->check = htons(ip_checksum(msg->payload));
-			tcph->check = htons(tcp_checksum(msg->payload));
+			ip->check = (ip_checksum(msg->payload));
+			tcph->check = (tcp_checksum(msg->payload));
 
 			if(debugMode){
 					printf("Entry found! Modified in-bound packet!\n");
@@ -401,7 +408,7 @@ if (( ntohl (ip -> saddr ) & LOCAL_MASK )== (LOCAL_NETWORK & LOCAL_MASK) ) {
 		ip_temp=ntohl(ip -> saddr);//can i?
 		port_temp=ntohs(udph -> source);//can i?
 
-
+		struct in_addr temp_inf;
 		temp_inf.s_addr=ip->saddr;
 		if(DEBUG_MODE_UDP) printf("UDP out-bound traffic form ip:%s port:%d\n",(char *)inet_ntoa(temp_inf),port_temp);	
 		fflush(stdout);
@@ -437,8 +444,8 @@ if (( ntohl (ip -> saddr ) & LOCAL_MASK )== (LOCAL_NETWORK & LOCAL_MASK) ) {
 		public_IP=htonl(public_IP);
 		ip -> saddr=public_IP;
 
-		udph -> check=htons(udp_checksum(msg->payload));
-		ip -> check=htons(ip_checksum(msg->payload));
+		udph -> check=(udp_checksum(msg->payload));
+		ip -> check=(ip_checksum(msg->payload));
 
 		//refresh timestamp
 		double ts = msg -> timestamp_sec +( double )msg -> timestamp_usec/1000000;
@@ -538,8 +545,8 @@ if (( ntohl (ip -> saddr ) & LOCAL_MASK )== (LOCAL_NETWORK & LOCAL_MASK) ) {
 
 
 			
-			udph -> check=htons(udp_checksum(msg->payload));
-			ip -> check=htons(ip_checksum(msg->payload));
+			udph -> check=(udp_checksum(msg->payload));
+			ip -> check=(ip_checksum(msg->payload));
 			
 
 			change=1;
@@ -563,6 +570,7 @@ if (( ntohl (ip -> saddr ) & LOCAL_MASK )== (LOCAL_NETWORK & LOCAL_MASK) ) {
 // In-bound traffic
 		unsigned short port_temp=0;
 		port_temp=ntohs(udph -> dest);//can i?
+		struct in_addr temp_inf;
 		temp_inf.s_addr=ip->saddr;
 		if(DEBUG_MODE_UDP) printf("UDP in-bound traffic form ip:%s port:%d\n",(char *)inet_ntoa(temp_inf),port_temp);	
 		fflush(stdout);
@@ -596,8 +604,8 @@ if (( ntohl (ip -> saddr ) & LOCAL_MASK )== (LOCAL_NETWORK & LOCAL_MASK) ) {
 		ip_temp=htonl(ip_temp);
 		ip -> daddr=ip_temp;
 
-		udph -> check=htons(udp_checksum(msg->payload));
-		ip -> check=htons(ip_checksum(msg->payload));
+		udph -> check=(udp_checksum(msg->payload));
+		ip -> check=(ip_checksum(msg->payload));
 
 		//refresh timestamp
 		double ts = msg -> timestamp_sec +( double )msg -> timestamp_usec /1000000;
@@ -657,6 +665,8 @@ void do_your_job(unsigned char *ip_pkt)
 	printf("[%5d] ", pkt_count);
 
 	ip = (struct iphdr *) ip_pkt;
+	check_udp_entry_time_out();
+	
 	switch(ip->protocol)
 	{
 	  case IPPROTO_TCP:
@@ -753,7 +763,7 @@ int main(int argc, char **argv)
 
 		msg = ipq_get_packet(buf);
 		
-		// check_udp_entry_time_out();
+	
 
 		do_your_job(msg->payload);
 		  printf("Decision: %d\n",decision);
