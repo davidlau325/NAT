@@ -215,11 +215,12 @@ if (( ntohl (ip -> saddr ) & LOCAL_MASK )== LOCAL_NETWORK ) {
 				{
 					PORTARRY[i]=1;
 					translated_port_temp=10000+i;
+					break;
 				}
 
 			}
 
-			if(translated_port_temp=0)
+			if(translated_port_temp==0)
 			{
 				printf("No available port!!!\n");
 				return -1;
@@ -244,7 +245,14 @@ if (( ntohl (ip -> saddr ) & LOCAL_MASK )== LOCAL_NETWORK ) {
 
 					}
 
+						if(i==MAX)
+						{
 
+							printf("No available NAT entry!!!\n");
+							return -1;
+
+
+						}
 
 			UDP_NAT_TABLE[i].ipAddr=ip_temp;
 			UDP_NAT_TABLE[i].port=port_temp;
