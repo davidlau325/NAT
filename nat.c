@@ -282,6 +282,7 @@ int handle_tcp(){
 
 
 
+
 /************************************************************************\
                            UDP Part
 \************************************************************************/
@@ -295,10 +296,10 @@ void check_udp_entry_time_out()
 		unsigned int ip_temp=0;
 		unsigned short port_temp=0;
 
-			if (( ntohl (ip -> saddr ) & LOCAL_MASK )== (LOCAL_NETWORK & LOCAL_MASK)) 
+			if (( ntohl (ip -> saddr ) & LOCAL_MASK )== LOCAL_NETWORK ) 
 			{
 
-			if(DEBUG_MODE_UDP)printf("UDP out-bound CHECK \n");
+			if(DEBUG_MODE_UDP)printf("UDP out-bound CHECK \n");	fflush(stdout);
 				//out
 					ip_temp=ntohl(ip -> saddr);//can i?
 					port_temp=ntohs(udph -> source);//can i?
@@ -308,11 +309,11 @@ void check_udp_entry_time_out()
 					for(i=0;i<MAX;i++)
 					{
 						
-						if(DEBUG_MODE_UDP) printf("UDP out-bound CHECK LOOP\n");
+						if(DEBUG_MODE_UDP) printf("UDP out-bound CHECK LOOP\n");	fflush(stdout);
 
 						if((ip_temp==UDP_NAT_TABLE[i].ipAddr)&&(port_temp==UDP_NAT_TABLE[i].port)&&(UDP_NAT_TABLE[i].valid==1))
 						{
-						if(DEBUG_MODE_UDP) printf("UDP out-bound CHECK Match\n");
+						if(DEBUG_MODE_UDP) printf("UDP out-bound CHECK Match\n");	fflush(stdout);
 						double ts = msg -> timestamp_sec +( double )msg -> timestamp_usec/1000000;
 						double time_difference=100;
 						time_difference=ts-UDP_NAT_TABLE[i].timestamp;
@@ -321,7 +322,7 @@ void check_udp_entry_time_out()
 							{
 								UDP_NAT_TABLE[i].valid=0;
 								PORTARRY[i]=0;
-							if(DEBUG_MODE_UDP) printf("UDP ENTRY expired, index: %d \n",i);
+							if(DEBUG_MODE_UDP) printf("UDP ENTRY expired, index: %d \n",i);	fflush(stdout);
 
 							}
 							break;
@@ -329,7 +330,7 @@ void check_udp_entry_time_out()
 					}
 
 
-					if(DEBUG_MODE_UDP) printf("After UDP out-bound CHECK \n");	
+					if(DEBUG_MODE_UDP) printf("After UDP out-bound CHECK \n");		fflush(stdout);
 
 
 			}
@@ -337,19 +338,21 @@ void check_udp_entry_time_out()
 			else 
 			{
 				// in
-				if(DEBUG_MODE_UDP) printf("UDP in-bound CHECK \n");
+				if(DEBUG_MODE_UDP) printf("UDP in-bound CHECK \n");	fflush(stdout);
 						port_temp=ntohs(udph -> dest);//can i?
 
 					int i;
 					for(i=0;i<MAX;i++)
 					{
-						if(DEBUG_MODE_UDP) printf("UDP IN-bound CHECK LOOP\n");
+						if(DEBUG_MODE_UDP) printf("UDP IN-bound CHECK LOOP\n");	fflush(stdout);
+
 
 						if((port_temp==UDP_NAT_TABLE[i].translated_port)&&(UDP_NAT_TABLE[i].valid==1))
 						{
 						if(DEBUG_MODE_UDP) printf("UDP IN-bound CHECK Match\n");
+								fflush(stdout);
 
-						double ts = msg -> timestamp_sec +( double )msg -> timestamp_usec /1000000;
+						double ts = msg ->timestamp_sec +( double )msg ->timestamp_usec /1000000;
 						double time_difference=100;
 						time_difference=ts-UDP_NAT_TABLE[i].timestamp;
 
@@ -362,6 +365,7 @@ void check_udp_entry_time_out()
 						}
 					}
 					if(DEBUG_MODE_UDP) printf("After UDP in-bound CHECK \n");	
+							fflush(stdout);
 
 
 			}
@@ -379,7 +383,7 @@ struct udphdr * udph = ( struct udphdr *) ((( char *) ip )
 		+ ip ->ihl *4) ;
 
 
-if (( ntohl (ip -> saddr ) & LOCAL_MASK )== (LOCAL_NETWORK & LOCAL_MASK)) {
+if (( ntohl (ip -> saddr ) & LOCAL_MASK )== LOCAL_NETWORK ) {
 // Out-bound traffic
 
 
@@ -396,8 +400,11 @@ if (( ntohl (ip -> saddr ) & LOCAL_MASK )== (LOCAL_NETWORK & LOCAL_MASK)) {
 		unsigned short port_temp=0;
 		ip_temp=ntohl(ip -> saddr);//can i?
 		port_temp=ntohs(udph -> source);//can i?
-		if(DEBUG_MODE_UDP) printf("UDP out-bound from ip: %d  port:  %d\n",ip_temp,port_temp);	
 
+
+		temp_inf.s_addr=ip->saddr;
+		if(DEBUG_MODE_UDP) printf("UDP out-bound traffic form ip:%s port:%d\n",(char *)inet_ntoa(temp_inf),port_temp);	
+		fflush(stdout);
 
 		int i;
 		for(i=0;i<MAX;i++)
@@ -407,7 +414,7 @@ if (( ntohl (ip -> saddr ) & LOCAL_MASK )== (LOCAL_NETWORK & LOCAL_MASK)) {
 					match=1;
 					match_index=i;
 					break;
-					if(DEBUG_MODE_UDP) printf("After UDP out-bound match_index: %d \n",match_index);	
+					if(DEBUG_MODE_UDP) printf("After UDP out-bound match_index: %d \n",match_index);		fflush(stdout);
 				}
 		}
 
@@ -415,13 +422,13 @@ if (( ntohl (ip -> saddr ) & LOCAL_MASK )== (LOCAL_NETWORK & LOCAL_MASK)) {
 /*step2: If yes, the NAT program should use the previously-assigned translated port number for the outbound packet.*/
 		if(match)
 		{
-			if(DEBUG_MODE_UDP) printf("UDP out-bound MATCH \n");	
+			if(DEBUG_MODE_UDP) printf("UDP out-bound MATCH \n");		fflush(stdout);
 
 
 			/*step4:update information.*/
 			// now translate and update header
 		port_temp=UDP_NAT_TABLE[match_index].translated_port;
-		if(DEBUG_MODE_UDP) printf("UDP out-bound translate to port:  %d\n",UDP_NAT_TABLE[match_index].translated_port);	
+		if(DEBUG_MODE_UDP) printf("UDP out-bound translate to port:  %d\n",UDP_NAT_TABLE[match_index].translated_port);		fflush(stdout);
 
 		port_temp=htons(port_temp);
 		udph -> source=port_temp;
@@ -449,7 +456,7 @@ if (( ntohl (ip -> saddr ) & LOCAL_MASK )== (LOCAL_NETWORK & LOCAL_MASK)) {
 		else
 		{
 
-			if(DEBUG_MODE_UDP) printf("UDP out-bound Doesn't MATCH \n");	
+			if(DEBUG_MODE_UDP) printf("UDP out-bound Doesn't MATCH \n");		fflush(stdout);
 
 
 			ip_temp=ntohl(ip -> saddr);//can i?  vm b or c 
@@ -478,7 +485,7 @@ if (( ntohl (ip -> saddr ) & LOCAL_MASK )== (LOCAL_NETWORK & LOCAL_MASK)) {
 			}
 
 			if(DEBUG_MODE_UDP)
-				printf("Translated_port_temp is  %u\n", translated_port_temp);
+				printf("Translated_port_temp is  %u\n", translated_port_temp);	fflush(stdout);
 
 
 
@@ -503,8 +510,8 @@ if (( ntohl (ip -> saddr ) & LOCAL_MASK )== (LOCAL_NETWORK & LOCAL_MASK)) {
 
 
 						}
-			if(DEBUG_MODE_UDP) printf("UDP out-bound Create new entry: translated_port %d\n",translated_port_temp);	
-		if(DEBUG_MODE_UDP) printf("UDP out-bound translate to port:  %d\n",translated_port_temp);	
+			if(DEBUG_MODE_UDP) printf("UDP out-bound Create new entry: translated_port %d\n",translated_port_temp);		fflush(stdout);
+		if(DEBUG_MODE_UDP) printf("UDP out-bound translate to port:  %d\n",translated_port_temp);		fflush(stdout);
 
 
 			UDP_NAT_TABLE[i].ipAddr=ip_temp;
@@ -554,19 +561,16 @@ if (( ntohl (ip -> saddr ) & LOCAL_MASK )== (LOCAL_NETWORK & LOCAL_MASK)) {
 		}//end if not
 	}else {
 // In-bound traffic
-<<<<<<< HEAD
 		unsigned short port_temp=0;
-		port_temp=ntohs(udph -> dest);//can i
-=======
 		port_temp=ntohs(udph -> dest);//can i?
->>>>>>> FETCH_HEAD
-
-		if(DEBUG_MODE_UDP) printf("UDP in-bound traffic form port:%d\n",port_temp);	
-
+		temp_inf.s_addr=ip->saddr;
+		if(DEBUG_MODE_UDP) printf("UDP in-bound traffic form ip:%s port:%d\n",(char *)inet_ntoa(temp_inf),port_temp);	
+		fflush(stdout);
 	int match=0;
 		int match_index=0;
 		unsigned int ip_temp=0;
 		
+	
 		int i;
 		for(i=0;i<MAX;i++)
 		{
@@ -687,17 +691,12 @@ int main(int argc, char **argv)
 	}
 	else
 	{
-<<<<<<< HEAD
+
 		inet_aton(argv[1],&container);
 		public_IP = ntohl(container.s_addr);
                 inet_aton(argv[2],&container);
 		LOCAL_NETWORK=ntohl(container.s_addr);
-=======
-		inet_aton(argv[1],container);
-		public_IP = container->s_addr;
-                inet_aton(argv[2],&container);
-		LOCAL_NETWORK=ntohl(container->s_addr);
->>>>>>> FETCH_HEAD
+
 		LOCAL_MASK = 0xFFFFFFFF;
 		tempMask = atoi(argv[3]);
 		LOCAL_MASK = LOCAL_MASK << (32 - tempMask);
