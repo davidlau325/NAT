@@ -28,27 +28,7 @@
 /************************************************************************\
                            Global Variables
 \************************************************************************/
-
-struct ipq_handle *ipq_handle = NULL;	// The IPQ handle
-unsigned int pkt_count = 0;		// Count the number of queued packets
-
-/*I move them here to make them global variables*/
-struct iphdr *ip; 
-unsigned char buf[BUF_SIZE];	// buffer to stored queued packets
-ipq_packet_msg_t *msg;		// point to the packet info.
-struct in_addr * public_IP;
-struct in_addr * LOCAL_NETWORK;
-unsigned int  LOCAL_MASK;
-
-char PORTARRY[2001];
-int decision;
 extern TCP_Table currentTable[MAX];
-
-
-
-/************************************************************************\
-                           UDP Part
-\************************************************************************/
 
 typedef struct UDP_NAT_TABLE_TYPE{
 	unsigned int ipAddr; //vm b or c
@@ -58,8 +38,26 @@ typedef struct UDP_NAT_TABLE_TYPE{
 	char valid;
 }UDP_NAT_TABLE_TYPE;
 
+struct ipq_handle *ipq_handle = NULL;	// The IPQ handle
+unsigned int pkt_count = 0;		// Count the number of queued packets
+
+/*I move them here to make them global variables*/
+struct iphdr *ip; 
+unsigned char buf[BUF_SIZE];	// buffer to stored queued packets
+ipq_packet_msg_t *msg;		// point to the packet info.
+unsigned int public_IP;
+unsigned int LOCAL_NETWORK;
+unsigned int  LOCAL_MASK;
+
+char PORTARRY[2001];
+int decision;
 UDP_NAT_TABLE_TYPE UDP_NAT_TABLE[MAX];
 
+
+
+/************************************************************************\
+                           UDP Part
+\************************************************************************/
 
 
 void check_udp_entry_time_out() 
