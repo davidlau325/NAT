@@ -18,18 +18,16 @@
 #include <arpa/inet.h>		// required by "inet_ntop()"
 
 #include "checksum.h"
-#include "tcp.h"
 
 #define BUF_SIZE 2048
 #define DEBUG_MODE_UDP 1
 #define MAX 2001
-#define tableMAX = 2000
-#define debugMode = 1
+#define tableMAX 2000
+#define debugMode 1
 
 /************************************************************************\
                            Global Variables
 \************************************************************************/
-// extern TCP_Table currentTable[MAX];
 
 typedef struct UDP_NAT_TABLE_TYPE{
 	unsigned int ipAddr; //vm b or c
@@ -47,9 +45,6 @@ typedef struct TCP_Table{
 	int valid;
 }TCP_Table;
 
-struct ipq_handle *ipq_handle = NULL;	// The IPQ handle
-unsigned int pkt_count = 0;		// Count the number of queued packets
-
 /*I move them here to make them global variables*/
 struct iphdr *ip; 
 unsigned char buf[BUF_SIZE];	// buffer to stored queued packets
@@ -62,6 +57,11 @@ char PORTARRY[2001];
 int decision;
 UDP_NAT_TABLE_TYPE UDP_NAT_TABLE[MAX];
 TCP_Table currentTable[tableMAX];
+
+struct tcphdr *tcph;
+
+struct ipq_handle *ipq_handle = NULL;	// The IPQ handle
+unsigned int pkt_count = 0;		// Count the number of queued packets
 
 /************************************************************************\
                            TCP Part
@@ -116,7 +116,7 @@ int handle_tcp(){
 	int newPort = -1;
 
 	ip = (struct iphdr *) ip_pkt;
-	struct tcphdr *tcph = (struct tcphdr *) (((unsigned char *) ip) + ip->ihl * 4);
+	tcph = (struct tcphdr *) (((unsigned char *) ip) + ip->ihl * 4);
 
 	struct in_addr sip, dip;
 	char sip_str[INET_ADDRSTRLEN+1], dip_str[INET_ADDRSTRLEN+1];
@@ -146,7 +146,7 @@ int handle_tcp(){
 
 		foundEntry = -1;
 
-		for(int i=0;i<tableMAX;i++){
+		for(i=0;i<tableMAX;i++){
 			if(currentTable[i].valid == 1){
 				if((currentTable[i].originalIP == (ntohl(ip->saddr))) && (currentTable[i].originalPort == (ntohs(tcph->source)))){
 					foundEntry = i;
@@ -163,7 +163,7 @@ int handle_tcp(){
 
 				newPort = -1;
 				for(i=0;i<2001;i++){
-					if(PORTARRAY[i] == 0){
+					if(PORTARRY[i] == 0){
 						newPort = (i+10000);
 					}
 				}
@@ -173,7 +173,7 @@ int handle_tcp(){
 					return -1;
 				}else{
 					insertEntry = -1;
-					for(i=0;i<tabeMAX;i++){
+					for(i=0;i<tableMAX;i++){
 						if(currentTable[i].valid == 1){
 							insertEntry = i;
 						}
@@ -183,7 +183,6 @@ int handle_tcp(){
 						printf("Warning! There is no empty entry to be inserted!!\n");
 						return -1;
 					}else{
-						currentTable[insertEntry] = malloc(sizeof(TCP_Table));
 						currentTable[insertEntry].originalIP = ntohl(ip->saddr);
 						currentTable[insertEntry].originalPort = ntohs(tcph->source);
 						currentTable[insertEntry].newPort = newPort;
@@ -265,7 +264,7 @@ int handle_tcp(){
 			checkTermination(foundEntry);
 
 			if(tcph->rst == 1){
-				if(debgMode){
+				if(debugMode){
 					printf("The in-bound packet is a RST packet, translated done but dropped the entry\n");
 				}
 				currentTable[foundEntry].valid = 0;
@@ -618,10 +617,12 @@ void do_your_job(unsigned char *ip_pkt)
 	switch(ip->protocol)
 	{
 	  case IPPROTO_TCP:
-	  	printf("Hello World\n");
+		printf("Received a TCP packet\n");
+	  	decision=handle_tcp();
 		break;
 
 	  case IPPROTO_UDP:
+		printf("Received a UDP packet\n");
 		decision=UDP_Handling();
 		break;
 
@@ -704,7 +705,7 @@ int main(int argc, char **argv)
 
 		msg = ipq_get_packet(buf);
 		
-		check_udp_entry_time_out();
+		// check_udp_entry_time_out();
 
 		do_your_job(msg->payload);
 
