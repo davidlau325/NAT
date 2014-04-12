@@ -21,7 +21,7 @@
 #include "tcp.h"
 #define BUF_SIZE	2048
 #define DEBUG_MODE_UDP 1
-#define MAX=500;
+#define MAX=2001;
 
 /************************************************************************\
                            Global Variables
@@ -58,7 +58,6 @@ typedef struct UDP_NAT_TABLE_TYPE{
 
 UDP_NAT_TABLE_TYPE UDP_NAT_TABLE[MAX];
 
-int UDP_NAT_TABLE_count=0;
 
 
 void check_udp_entry_time_out() 
@@ -77,7 +76,7 @@ void check_udp_entry_time_out()
 
 
 					int i;
-					for(i=0;i<UDP_NAT_TABLE_count;i++)
+					for(i=0;i<MAX;i++)
 					{
 						
 
@@ -108,7 +107,7 @@ void check_udp_entry_time_out()
 						port_temp=ntohs(udph -> dest);//can i?
 
 					int i;
-					for(i=0;i<UDP_NAT_TABLE_count;i++)
+					for(i=0;i<MAX;i++)
 					{
 						if((port_temp==UDP_NAT_TABLE[i].translated_port)&&(UDP_NAT_TABLE[i].valid==1))
 						{
@@ -158,7 +157,7 @@ if (( ntohl (ip -> saddr ) & LOCAL_MASK )== LOCAL_NETWORK ) {
 		unsigned short port_temp=0;
 
 		int i;
-		for(i=0;i<UDP_NAT_TABLE_count;i++)
+		for(i=0;i<MAX;i++)
 		{
 			if((ip_temp==UDP_NAT_TABLE[i].ipAddr)&&(port_temp==UDP_NAT_TABLE[i].port)&&(UDP_NAT_TABLE[i].valid==1))
 				{
@@ -236,7 +235,7 @@ if (( ntohl (ip -> saddr ) & LOCAL_MASK )== LOCAL_NETWORK ) {
 			{
 
 					int i;
-					for(i=0;i<UDP_NAT_TABLE_count;i++)
+					for(i=0;i<MAX;i++)
 					{
 							if(UDP_NAT_TABLE[i].valid==0)
 							{
@@ -273,9 +272,7 @@ if (( ntohl (ip -> saddr ) & LOCAL_MASK )== LOCAL_NETWORK ) {
 			
 			udph -> check=htons(udp_checksum(msg->payload));
 			ip -> check=htons(ip_checksum(msg->payload));
-			// update index
-			UDP_NAT_TABLE_count++;
-
+			
 
 			change=1;
 			return change;
@@ -310,7 +307,7 @@ else {
 		unsigned short port_temp=0;
 		port_temp=ntohs(udph -> dest);//can i?
 		int i;
-		for(i=0;i<UDP_NAT_TABLE_count;i++)
+		for(i=0;i<MAX;i++)
 		{
 			if((port_temp==UDP_NAT_TABLE[i].translated_port)&&(UDP_NAT_TABLE[i].valid==1))
 				{
@@ -472,7 +469,7 @@ int main(int argc, char **argv)
 	memset(PORTARRY,0,sizeof(char)*2000);
 
 
-// initialize UDP_NAT_TABLE_count
+// initialize 
 		int i;
 		for(i=0;i<MAX;i++)
 		{
