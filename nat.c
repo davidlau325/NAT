@@ -16,9 +16,7 @@
 #include <sys/types.h>		// required by "inet_ntop()"
 #include <sys/socket.h>		// required by "inet_ntop()"
 #include <arpa/inet.h>		// required by "inet_ntop()"
-
 #include "tcp.h"
-
 #define BUF_SIZE	2048
 #define DEBUG_MODE_UDP 1
 #define MAX=500;
@@ -39,11 +37,14 @@ unsigned char buf[BUF_SIZE];	// buffer to stored queued packets
 
 ipq_packet_msg_t *msg;		// point to the packet info.
 
-unsigned int public_IP;
+struct in_addr * public_IP;
 
-type LOCAL_MASK;
+struct in_addr * LOCAL_NETWORK;
 
-type LOCAL_NETWORK;
+unsigned int  LOCAL_MASK;
+
+
+char PORTARRY[2000];
 
 
 
@@ -252,7 +253,9 @@ void do_your_job(unsigned char *ip_pkt)
 	switch(ip->protocol)
 	{
 	  case IPPROTO_TCP:
-		handle_tcp(ip, (struct tcphdr *) (((unsigned char *) ip) + ip->ihl * 4));
+		 // handling TCP here!
+	  	  handle_tcp(ip, (struct tcphdr *) (((unsigned char *) ip) + ip->ihl * 4));
+
 		break;
 
 	  case IPPROTO_UDP:
@@ -272,7 +275,23 @@ void do_your_job(unsigned char *ip_pkt)
 
 int main(int argc, char **argv)
 {
+
+	if(argc!=4)
+	{
+
+		printf("Usage: ./nat [public IP] [internal IP] [netmask] \n");
+		exit(0);
+	}
+	else
+	{
+		public_IP=inet_aton(argv[1]);
+		LOCAL_NETWORK=inet_aton(argv[2]);
+		LOCAL_MASK=argv[3];
+	}
 	
+	memset(PORTARRY,0,sizeof(char)*2000);
+
+
 
   /**** Create the ipq_handle ****/
 
