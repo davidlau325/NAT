@@ -27,6 +27,41 @@
 #define tableMAX 2000
 #define debugMode 1
 
+
+
+
+uint16_t icmp_checksum(void* vdata,size_t length) {
+    // Cast the data pointer to one that can be indexed.
+    char* data=(char*)vdata;
+
+    // Initialise the accumulator.
+    uint32_t acc=0xffff;
+
+    // Handle complete 16-bit blocks
+    size_t i;
+    for ( i=0;i+1<length;i+=2) {
+        uint16_t word;
+        memcpy(&word,data+i,2);
+        acc+=ntohs(word);
+        if (acc>0xffff) {
+            acc-=0xffff;
+        }
+    }
+
+    // Handle any partial block at the end of the data.
+    if (length&1) {
+        uint16_t word=0;
+        memcpy(&word,data+length-1,1);
+        acc+=ntohs(word);
+        if (acc>0xffff) {
+            acc-=0xffff;
+        }
+    }
+
+    // Return the checksum in network byte order.
+    return htons(~acc);
+}
+
 /************************************************************************\
                            Global Variables
 \************************************************************************/
@@ -88,6 +123,19 @@ int checkPortOpen(unsigned short checkingPort){
  		return 1;
  	}
  	return 1;
+}
+
+unsigned short new_checksum(unsigned short *buffer, int size)
+{
+ unsigned long cksum=0;
+ while(size >1) {
+  cksum+=*buffer++;
+  size-=sizeof(unsigned short);
+ }
+ if(size) cksum+=*(unsigned short*)buffer;
+ cksum=(cksum >> 16)+(cksum&0xffff);
+ cksum+=(cksum >>16);
+ return (unsigned short)(~cksum);
 }
 
 
@@ -678,16 +726,94 @@ return change;
 
 
 
-// int ICMP_Handling()
-// {
+int ICMP_Handling()
+{
+		struct icmphdr * icmp=(struct icmphdr *)(((unsigned char *) ip) + ip->ihl * 4);
+
+		unsigned int type=icmp->type;
+		unsigned int code=icmp->code;
+		unsigned short port_temp=0;
+		unsigned int ip_temp=0;
+		int change=2;
+		if((type==3)&&(code==3))
+		{
+
+				if(DEBUG_MODE_UDP) printf("Unreachable Port \n");		fflush(stdout);
+					
+					memcpy(&port_temp,&msg->payload[48],sizeof(port_temp));
+					port_temp=ntohs(port_temp);
+
+					printf("Source port %d\n", port_temp);
+			/*	int i=0;
+				
+				for(i=0;i<72;i++){
+					printf("%d:%d \n ",i,msg->payload[i]);
+				}
+			*/
+			int match=0;
+			int match_index=0;
+			int i;
+				for(i=0;i<MAX;i++)
+				{
+					if((port_temp==UDP_NAT_TABLE[i].translated_port)&&(UDP_NAT_TABLE[i].valid==1))
+						{
+							match=1;
+							match_index=i;
+							break;
+						}
+				}
 
 
+				if(match)
+				{
+				// if(DEBUG_MODE_UDP) printf("UDP in-bound MATCH \n");		fflush(stdout);
 
 
+					/*step4:update information.*/
+					// now translate and update header
+				port_temp=UDP_NAT_TABLE[match_index].port;
+				port_temp=htons(port_temp);
+				memcpy(&msg->payload[48],&port_temp,sizeof(port_temp));
+				
+				// if(DEBUG_MODE_UDP) printf("UDP out-bound  translate port from  %d  to   %d\n",UDP_NAT_TABLE[match_index].translated_port, UDP_NAT_TABLE[match_index].port);		fflush(stdout);
 
 
+				ip_temp=UDP_NAT_TABLE[match_index].ipAddr;
+				ip_temp=htonl(ip_temp);
+				ip -> daddr=ip_temp;
 
-// }
+				// udph -> check=(udp_checksum(msg->payload));
+				ip -> check=(ip_checksum(msg->payload));
+				icmp->checksum = 0;
+				for(i=0;i<55;i++){
+					printf("Num: %d: %d\n",i,msg->payload[i]);
+				}
+				
+				icmp->checksum=checksum(&msg->payload[20],38);
+			
+				// hihi
+
+				//refresh timestamp
+				double ts = msg -> timestamp_sec +( double )msg -> timestamp_usec /1000000;
+
+					UDP_NAT_TABLE[match_index].timestamp=ts;//need modify
+			
+
+
+					change=1;
+					return change;
+				}//end if yes
+				else
+				{
+					if(DEBUG_MODE_UDP) printf("UDP in-bound NOT MATCH \n");		fflush(stdout);
+					change=-1;
+					return change;
+				}
+
+
+		}
+		return change;
+}
 
 
 
@@ -750,6 +876,7 @@ void do_your_job(unsigned char *ip_pkt)
 
 	  case IPPROTO_ICMP:
 		printf("This is ICMP packet\n");
+		decision=ICMP_Handling();
 
 		break;
 
