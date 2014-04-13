@@ -12,6 +12,8 @@
 #include <netinet/tcp.h>	// required by "struct tcph"
 #include <netinet/udp.h>	// required by "struct udph"
 #include <netinet/ip_icmp.h>	// required by "struct icmphdr"
+#include <netinet/in.h>
+#include <netdb.h>
 
 #include <sys/types.h>		// required by "inet_ntop()"
 #include <sys/socket.h>		// required by "inet_ntop()"
@@ -61,6 +63,33 @@ TCP_Table currentTable[tableMAX];
 struct tcphdr *tcph;
  struct ipq_handle *ipq_handle = NULL;	// The IPQ handle
 unsigned int pkt_count = 0;		// Count the number of queued packets
+
+// check if port opened
+int checkPortOpen(unsigned short checkingPort){
+	// connect to server 
+	int connectServerSocket;
+	struct sockaddr_in serverAddr;
+
+ 	connectServerSocket = socket(AF_INET,SOCK_STREAM,0);
+ 	memset(&serverAddr,0,sizeof(serverAddr));
+ 	serverAddr.sin_family = AF_INET;
+ 	serverAddr.sin_addr.s_addr = inet_addr("10.4.17.1");
+ 	serverAddr.sin_port = htons(checkingPort);
+ 	int serverAddrLength;
+ 	serverAddrLength = sizeof(serverAddr);
+ 	if(connect(connectServerSocket,(struct sockaddr *) &serverAddr, serverAddrLength)<0){
+ 		printf("Port %d is closed!\n",checkingPort);
+ 		fflush(stdout);
+ 		close(connectServerSocket);
+ 		return -1;
+ 	}else{
+ 		printf("Port %d is opened!\n",checkingPort);
+ 		close(connectServerSocket);
+ 		return 1;
+ 	}
+ 	return 1;
+}
+
 
 /************************************************************************\
                            TCP Part
@@ -154,11 +183,13 @@ int handle_tcp(){
 
 				newPort = -1;
 				for(i=0;i<2001;i++){
+					// if(checkPortOpen((i+10000))==-1){
+					// PORTARRY[i]=1;
+					// }
 					if(PORTARRY[i] == 0){
-
-						PORTARRY[i]=1;	/*modify here*/
-						newPort = (i+10000); 
-						break; 	/*modify here*/
+							PORTARRY[i]=1;	/*modify here*/
+							newPort = (i+10000); 
+							break; 	/*modify here*/
 					}
 				}
 
@@ -478,6 +509,9 @@ if (( ntohl (ip -> saddr ) & LOCAL_MASK )== (LOCAL_NETWORK & LOCAL_MASK) ) {
 			int i;
 			for(i=0;i<2001;i++)
 			{
+				// if(checkPortOpen((i+10000))==-1){
+				// 	PORTARRY[i]=1;
+				// }
 				if(PORTARRY[i]==0)
 				{
 					PORTARRY[i]=1;
@@ -644,8 +678,8 @@ return change;
 
 
 
-int ICMP_Handling()
-{
+// int ICMP_Handling()
+// {
 
 
 
@@ -653,7 +687,7 @@ int ICMP_Handling()
 
 
 
-}
+// }
 
 
 
