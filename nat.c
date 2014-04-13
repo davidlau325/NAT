@@ -18,7 +18,7 @@
 #include <arpa/inet.h>		// required by "inet_ntop()"
 
 #include "checksum.h"
-
+#define TIMEOUT 5
 #define BUF_SIZE 2048
 #define DEBUG_MODE_UDP 1
 #define MAX 2001
@@ -101,6 +101,7 @@ void checkTermination(int foundEntry){
 			currentTable[foundEntry].valid = 0;
 			if(debugMode){
 				printf("The final ACK received and thus terminate this TCP flow!\n");
+
 			}
 		}
 	}
@@ -161,7 +162,10 @@ int handle_tcp(){
 				newPort = -1;
 				for(i=0;i<2001;i++){
 					if(PORTARRY[i] == 0){
+
+						PORTARRY[i]=1;
 						newPort = (i+10000);
+						break;
 					}
 				}
 
@@ -229,7 +233,7 @@ int handle_tcp(){
 				tcph->check = (tcp_checksum(msg->payload));
 
 				if(debugMode){
-					printf("TCP IP address and Port Modified as retrieved from table= Port: %d",ntohs(tcph->source));
+					printf("TCP IP address and Port Modified as retrieved from table= Port: %d \n",ntohs(tcph->source));
 				}
 
 				checkTermination(foundEntry);
@@ -292,20 +296,22 @@ int handle_tcp(){
 
 void check_udp_entry_time_out() 
 {
-		struct udphdr * udph = ( struct udphdr *) ((( char *) ip )
-		+ ip ->ihl *4) ;
+		// struct udphdr * udph = ( struct udphdr *) ((( char *) ip )
+		// + ip ->ihl *4) ;
 
-		unsigned int ip_temp=0;
-		unsigned short port_temp=0;
+		// unsigned int ip_temp=0;
+		//  unsigned short port_temp=0;	
+
 
 			if (( ntohl (ip -> saddr ) & LOCAL_MASK )== (LOCAL_NETWORK & LOCAL_MASK) ) 
 			{
 
-			if(DEBUG_MODE_UDP)printf("UDP out-bound CHECK \n");	fflush(stdout);
+			 if(DEBUG_MODE_UDP)printf("Out-bound CHECK Timestamp \n");	fflush(stdout);
 				//out
-					ip_temp=ntohl(ip -> saddr);//can i?
-					port_temp=ntohs(udph -> source);//can i?
+					// ip_temp=ntohl(ip -> saddr);//can i?
+					// port_temp=ntohs(udph -> source);//can i?
 
+					double ts = msg -> timestamp_sec +( double )msg -> timestamp_usec/1000000;
 
 					int i;
 					for(i=0;i<MAX;i++)
@@ -313,26 +319,31 @@ void check_udp_entry_time_out()
 						
 						// if(DEBUG_MODE_UDP) printf("UDP out-bound CHECK LOOP\n");	fflush(stdout);
 
-						if((ip_temp==UDP_NAT_TABLE[i].ipAddr)&&(port_temp==UDP_NAT_TABLE[i].port)&&(UDP_NAT_TABLE[i].valid==1))
-						{
-						if(DEBUG_MODE_UDP) printf("UDP out-bound CHECK Match\n");	fflush(stdout);
-						double ts = msg -> timestamp_sec +( double )msg -> timestamp_usec/1000000;
+						// if((ip_temp==UDP_NAT_TABLE[i].ipAddr)&&(port_temp==UDP_NAT_TABLE[i].port)&&(UDP_NAT_TABLE[i].valid==1))
+						// {
+						// if(DEBUG_MODE_UDP) printf("UDP out-bound CHECK Match\n");	fflush(stdout);
 						double time_difference=100;
 						time_difference=ts-UDP_NAT_TABLE[i].timestamp;
 
-							if(time_difference>30)
+							if((time_difference>TIMEOUT)&&(UDP_NAT_TABLE[i].valid==1))
 							{
 								UDP_NAT_TABLE[i].valid=0;
-								PORTARRY[i]=0;
-							if(DEBUG_MODE_UDP) printf("UDP ENTRY expired, index: %d \n",i);	fflush(stdout);
-
+								int index;
+								index=UDP_NAT_TABLE[i].translated_port-10000;
+								PORTARRY[index]=0;
+							struct in_addr temp_inf;
+								temp_inf.s_addr=htonl(UDP_NAT_TABLE[i].ipAddr);
+								if(DEBUG_MODE_UDP) printf("****UDP NAT ENTRY expired,ip: %s port: %d translated_port %d ****\n",(char *)inet_ntoa(temp_inf),UDP_NAT_TABLE[i].port,UDP_NAT_TABLE[i].translated_port);	fflush(stdout);
 							}
-							break;
-						}
+						
+
+
+						// }
+
+						// 	break;
 					}
-
-
-					if(DEBUG_MODE_UDP) printf("After UDP out-bound CHECK \n");		fflush(stdout);
+			
+					// if(DEBUG_MODE_UDP) printf("After UDP out-bound CHECK \n");	fflush(stdout);
 
 
 			}
@@ -340,8 +351,10 @@ void check_udp_entry_time_out()
 			else 
 			{
 				// in
-				if(DEBUG_MODE_UDP) printf("UDP in-bound CHECK \n");	fflush(stdout);
-						port_temp=ntohs(udph -> dest);//can i?
+				 if(DEBUG_MODE_UDP)printf("In-bound CHECK Timestamp \n");	fflush(stdout);
+
+				// if(DEBUG_MODE_UDP) printf("UDP in-bound CHECK \n");	fflush(stdout);
+						// port_temp=ntohs(udph -> dest);//can i?
 
 					int i;
 					for(i=0;i<MAX;i++)
@@ -349,25 +362,28 @@ void check_udp_entry_time_out()
 						// if(DEBUG_MODE_UDP) printf("UDP IN-bound CHECK LOOP\n");	fflush(stdout);
 
 
-						if((port_temp==UDP_NAT_TABLE[i].translated_port)&&(UDP_NAT_TABLE[i].valid==1))
-						{
-						if(DEBUG_MODE_UDP) printf("UDP IN-bound CHECK Match\n");
-								fflush(stdout);
+						// if((port_temp==UDP_NAT_TABLE[i].translated_port)&&(UDP_NAT_TABLE[i].valid==1))
+						// {
+						// if(DEBUG_MODE_UDP) printf("UDP IN-bound CHECK Match\n"); fflush(stdout);
 
 						double ts = msg ->timestamp_sec +( double )msg ->timestamp_usec /1000000;
 						double time_difference=100;
 						time_difference=ts-UDP_NAT_TABLE[i].timestamp;
 
-							if(time_difference>30)
+							if((time_difference>TIMEOUT)&&(UDP_NAT_TABLE[i].valid==1))
 							{
 								UDP_NAT_TABLE[i].valid=0;
-								PORTARRY[i]=0;
+								int index;
+								index=UDP_NAT_TABLE[i].translated_port-10000;
+								PORTARRY[index]=0;
+								struct in_addr temp_inf;
+								temp_inf.s_addr=htonl(UDP_NAT_TABLE[i].ipAddr);
+								if(DEBUG_MODE_UDP) printf("****UDP NAT ENTRY expired,ip: %s port: %d translated_port: %d ****\n",(char *)inet_ntoa(temp_inf),UDP_NAT_TABLE[i].port,UDP_NAT_TABLE[i].translated_port);	fflush(stdout);
 							}
-							break;
-						}
+						// 	break;
+						// }
 					}
-					if(DEBUG_MODE_UDP) printf("After UDP in-bound CHECK \n");	
-							fflush(stdout);
+					// if(DEBUG_MODE_UDP) printf("After UDP in-bound CHECK \n");		fflush(stdout);
 
 
 			}
@@ -484,8 +500,8 @@ if (( ntohl (ip -> saddr ) & LOCAL_MASK )== (LOCAL_NETWORK & LOCAL_MASK) ) {
 
 			}
 
-			if(DEBUG_MODE_UDP)
-				printf("Translated_port_temp is  %u\n", translated_port_temp);	fflush(stdout);
+			// if(DEBUG_MODE_UDP)
+			// 	printf("Translated_port_temp is  %u\n", translated_port_temp);	fflush(stdout);
 
 
 
@@ -500,17 +516,15 @@ if (( ntohl (ip -> saddr ) & LOCAL_MASK )== (LOCAL_NETWORK & LOCAL_MASK) ) {
 								break;
 							}	
 
-					}
+						}
 
 						if(i==MAX)
 						{
 
 							printf("No available NAT entry!!!\n");
 							return -1;
-
-
 						}
-			if(DEBUG_MODE_UDP) printf("UDP out-bound Create new entry: translated_port %d\n",translated_port_temp);		fflush(stdout);
+		if(DEBUG_MODE_UDP) printf("UDP out-bound Create new entry: translated_port %d\n",translated_port_temp);		fflush(stdout);
 		if(DEBUG_MODE_UDP) printf("UDP out-bound translate to port:  %d\n",translated_port_temp);		fflush(stdout);
 
 
@@ -562,16 +576,17 @@ if (( ntohl (ip -> saddr ) & LOCAL_MASK )== (LOCAL_NETWORK & LOCAL_MASK) ) {
 	}else {
 // In-bound traffic
 		unsigned short port_temp=0;
-		port_temp=ntohs(udph -> dest);//can i?
+		port_temp=ntohs(udph -> source);
+		
 		struct in_addr temp_inf;
 		temp_inf.s_addr=ip->saddr;
 		if(DEBUG_MODE_UDP) printf("UDP in-bound traffic form ip:%s port:%d\n",(char *)inet_ntoa(temp_inf),port_temp);	
 		fflush(stdout);
-	int match=0;
+		int match=0;
 		int match_index=0;
 		unsigned int ip_temp=0;
 		
-	
+		port_temp=ntohs(udph -> dest);//can i?
 		int i;
 		for(i=0;i<MAX;i++)
 		{
@@ -586,12 +601,16 @@ if (( ntohl (ip -> saddr ) & LOCAL_MASK )== (LOCAL_NETWORK & LOCAL_MASK) ) {
 
 		if(match)
 		{
+		if(DEBUG_MODE_UDP) printf("UDP in-bound MATCH \n");		fflush(stdout);
+
 
 			/*step4:update information.*/
 			// now translate and update header
 		port_temp=UDP_NAT_TABLE[match_index].port;
 		port_temp=htons(port_temp);
 		udph -> dest=port_temp;
+		if(DEBUG_MODE_UDP) printf("UDP out-bound  translate port from  %d  to   %d\n",UDP_NAT_TABLE[match_index].translated_port, UDP_NAT_TABLE[match_index].port);		fflush(stdout);
+
 
 		ip_temp=UDP_NAT_TABLE[match_index].ipAddr;
 		ip_temp=htonl(ip_temp);
@@ -612,6 +631,7 @@ if (( ntohl (ip -> saddr ) & LOCAL_MASK )== (LOCAL_NETWORK & LOCAL_MASK) ) {
 		}//end if yes
 		else
 		{
+			if(DEBUG_MODE_UDP) printf("UDP in-bound NOT MATCH \n");		fflush(stdout);
 			change=-1;
 			return change;
 		}
@@ -626,6 +646,33 @@ if (( ntohl (ip -> saddr ) & LOCAL_MASK )== (LOCAL_NETWORK & LOCAL_MASK) ) {
 return change;
 
 }
+
+
+
+
+int ICMP_Handling()
+{
+
+
+
+
+
+	
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 void byebye(char *msg) {
 	if(ipq_handle)
@@ -759,19 +806,30 @@ int main(int argc, char **argv)
 	
 
 		do_your_job(msg->payload);
-		  printf("Decision: %d\n",decision);
+		 
+
+
 		  
 		if(decision == -1){
+
+				  printf("Decision: Drop\n");
+
 			if(ipq_set_verdict(ipq_handle, msg->packet_id, NF_DROP, 0, NULL) == -1)
 			{
+		
 			byebye("ipq_set_verdict");	// exit(1) included.
+
 			}
 		}else if(decision == 1){
+			 printf("Decision: Modify\n");
+
 			if(ipq_set_verdict(ipq_handle, msg->packet_id, NF_ACCEPT, msg->data_len, msg->payload) == -1)
 			{
 			byebye("ipq_set_verdict");	// exit(1) included.
 			}
 		}else{
+			 printf("Decision: Unchanged\n");
+
 			if(ipq_set_verdict(ipq_handle, msg->packet_id, NF_ACCEPT, 0, NULL) == -1)
 			{
 			byebye("ipq_set_verdict");	// exit(1) included.
