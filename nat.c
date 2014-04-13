@@ -67,44 +67,34 @@ unsigned int pkt_count = 0;		// Count the number of queued packets
 \************************************************************************/
 
 void checkTermination(int foundEntry){
-
-	if(tcph->fin == 1 && tcph->ack != 1){
+	if(tcph->fin == 1){
 		if(currentTable[foundEntry].exitFlow == -1){
 			currentTable[foundEntry].exitFlow = 1;
 			if(debugMode){
 				printf("FIN sent to initiate closing..\n");
 			}
-		}else if (currentTable[foundEntry].exitFlow == 2){
-			currentTable[foundEntry].exitFlow = 3;
+		}else if(currentTable[foundEntry].exitFlow == 1){
+			currentTable[foundEntry].exitFlow = 2;
 			if(debugMode){
 				printf("FIN sent to respond to closing..\n");
 			}
-		}
-	}
-
-	if(tcph->fin == 1 && tcph->ack == 1){
-		if(currentTable[foundEntry].exitFlow == 1){
-			currentTable[foundEntry].exitFlow = 3;
+		}else{
 			if(debugMode){
-				printf("FIN & ACK sent together to respond to closing..\n");
+				printf("FIN sent Error!\n");
 			}
 		}
+		return;
 	}
 
 	if(tcph->ack == 1 && tcph->fin != 1){
-		if(currentTable[foundEntry].exitFlow == 1){
-			currentTable[foundEntry].exitFlow = 2;
-			if (debugMode){
-				printf("ACK sent to respond to closing..\n");
-			}
-		}else if(currentTable[foundEntry].exitFlow == 3){
+		if(currentTable[foundEntry].exitFlow == 2){
 			currentTable[foundEntry].valid = 0;
+			int index=currentTable[foundEntry].newPort-10000;/*modify here*/
+				currentTable[foundEntry].exitFlow = -1;
+				PORTARRY[index]=0;/*modify here*/
 			if(debugMode){
 				printf("The final ACK received and thus terminate this TCP flow!\n");
-
-
-				int index=currentTable[foundEntry].newPort-10000;/*modify here*/
-				PORTARRY[index]=0;/*modify here*/
+				
 			}
 		}
 	}
