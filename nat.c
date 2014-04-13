@@ -102,6 +102,9 @@ void checkTermination(int foundEntry){
 			if(debugMode){
 				printf("The final ACK received and thus terminate this TCP flow!\n");
 
+
+				int index=currentTable[foundEntry].newPort-10000;/*modify here*/
+				PORTARRY[index]=0;/*modify here*/
 			}
 		}
 	}
@@ -163,9 +166,9 @@ int handle_tcp(){
 				for(i=0;i<2001;i++){
 					if(PORTARRY[i] == 0){
 
-						PORTARRY[i]=1;
-						newPort = (i+10000);
-						break;
+						PORTARRY[i]=1;	/*modify here*/
+						newPort = (i+10000); 
+						break; 	/*modify here*/
 					}
 				}
 
@@ -177,6 +180,7 @@ int handle_tcp(){
 					for(i=0;i<tableMAX;i++){
 						if(currentTable[i].valid == 0){
 							insertEntry = i;
+							break;  /*modify here*/
 						}
 					}
 
@@ -657,7 +661,8 @@ int ICMP_Handling()
 
 
 
-	
+
+
 }
 
 
@@ -721,6 +726,7 @@ void do_your_job(unsigned char *ip_pkt)
 
 	  case IPPROTO_ICMP:
 		printf("This is ICMP packet\n");
+
 		break;
 
 	  default:
