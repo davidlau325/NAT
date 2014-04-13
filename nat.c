@@ -164,7 +164,7 @@ int handle_tcp(){
 				for(i=0;i<2001;i++){
 					if(PORTARRY[i] == 0){
 						newPort = (i+10000);
-						break;
+						// break;
 					}
 				}
 
