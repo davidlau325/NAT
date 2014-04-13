@@ -162,7 +162,6 @@ int handle_tcp(){
 				for(i=0;i<2001;i++){
 					if(PORTARRY[i] == 0){
 						newPort = (i+10000);
-						// break;
 					}
 				}
 
@@ -230,7 +229,7 @@ int handle_tcp(){
 				tcph->check = (tcp_checksum(msg->payload));
 
 				if(debugMode){
-					printf("TCP IP address and Port Modified as retrieved from table= Port: %d  \n" ,ntohs(tcph->source));
+					printf("TCP IP address and Port Modified as retrieved from table= Port: %d",ntohs(tcph->source));
 				}
 
 				checkTermination(foundEntry);
@@ -333,7 +332,7 @@ void check_udp_entry_time_out()
 					}
 
 
-					 if(DEBUG_MODE_UDP) printf("After UDP out-bound CHECK \n");		fflush(stdout);
+					if(DEBUG_MODE_UDP) printf("After UDP out-bound CHECK \n");		fflush(stdout);
 
 
 			}
@@ -367,7 +366,8 @@ void check_udp_entry_time_out()
 							break;
 						}
 					}
-					 if(DEBUG_MODE_UDP) printf("After UDP in-bound CHECK \n");	fflush(stdout);
+					if(DEBUG_MODE_UDP) printf("After UDP in-bound CHECK \n");	
+							fflush(stdout);
 
 
 			}
@@ -405,7 +405,7 @@ if (( ntohl (ip -> saddr ) & LOCAL_MASK )== (LOCAL_NETWORK & LOCAL_MASK) ) {
 
 		struct in_addr temp_inf;
 		temp_inf.s_addr=ip->saddr;
-		if(DEBUG_MODE_UDP) printf("UDP out-bound traffic form ip: %s port:%d\n",(char *)inet_ntoa(temp_inf),port_temp);	
+		if(DEBUG_MODE_UDP) printf("UDP out-bound traffic form ip:%s port:%d\n",(char *)inet_ntoa(temp_inf),port_temp);	
 		fflush(stdout);
 
 		int i;
@@ -430,7 +430,7 @@ if (( ntohl (ip -> saddr ) & LOCAL_MASK )== (LOCAL_NETWORK & LOCAL_MASK) ) {
 			/*step4:update information.*/
 			// now translate and update header
 		port_temp=UDP_NAT_TABLE[match_index].translated_port;
-		// if(DEBUG_MODE_UDP) printf("UDP out-bound translate to port:  %d\n",UDP_NAT_TABLE[match_index].translated_port);		fflush(stdout);
+		if(DEBUG_MODE_UDP) printf("UDP out-bound translate to port:  %d\n",UDP_NAT_TABLE[match_index].translated_port);		fflush(stdout);
 
 		port_temp=htons(port_temp);
 		udph -> source=port_temp;
@@ -484,8 +484,8 @@ if (( ntohl (ip -> saddr ) & LOCAL_MASK )== (LOCAL_NETWORK & LOCAL_MASK) ) {
 
 			}
 
-			// if(DEBUG_MODE_UDP)
-				// printf("Translated_port_temp is  %u\n", translated_port_temp);	fflush(stdout);
+			if(DEBUG_MODE_UDP)
+				printf("Translated_port_temp is  %u\n", translated_port_temp);	fflush(stdout);
 
 
 
